@@ -1,0 +1,32 @@
+=== Vertex AI MaaS Gemma 4 26B-A4B Benchmark ===
+Model: google/gemma-4-26b-a4b-it-maas
+Endpoint: aiplatform.googleapis.com/v1/.../openapi/chat/completions
+Input: ~20k tokens, Output: 250 tokens
+Date: 2025-04-14
+
+=== QPS Sweep (N=10 each) ===
+QPS=0.1:  10/10 ok | TTFT mean=1221.6 med=1167.1 p99=1437.8ms | lat=1.50s | tput=0.109req/s
+QPS=0.15: 10/10 ok | TTFT mean=1000.0 med=1149.7 p99=1299.8ms | lat=1.26s | tput=0.163req/s
+QPS=0.2:  10/10 ok | TTFT mean=916.1  med=1155.6 p99=1213.2ms | lat=1.20s | tput=0.215req/s
+QPS=0.25: 10/10 ok | TTFT mean=726.8  med=575.9  p99=1253.1ms | lat=1.04s | tput=0.267req/s
+QPS=0.3:  10/10 ok | TTFT mean=680.1  med=459.7  p99=1250.4ms | lat=1.00s | tput=0.324req/s
+QPS=0.4:  10/10 ok | TTFT mean=648.1  med=511.6  p99=1156.6ms | lat=0.95s | tput=0.423req/s
+QPS=0.5:  10/10 ok | TTFT mean=558.7  med=518.0  p99=956.3ms  | lat=0.86s | tput=0.532req/s
+QPS=0.7:  10/10 ok | TTFT mean=680.5  med=615.3  p99=1173.9ms | lat=0.97s | tput=0.730req/s
+QPS=1.0:  10/10 ok | TTFT mean=605.0  med=533.6  p99=1091.3ms | lat=0.91s | tput=0.995req/s
+
+=== Burst Sweep ===
+Burst N=1:  1/1   ok | TTFT mean=491.1  med=491.1  p99=491.1ms  | lat=0.80s | tput=1.249req/s
+Burst N=2:  2/2   ok | TTFT mean=647.3  med=647.3  p99=647.6ms  | lat=0.81s | tput=2.464req/s
+Burst N=5:  5/5   ok | TTFT mean=768.9  med=639.4  p99=1282.0ms | lat=1.08s | tput=3.118req/s
+Burst N=8:  8/8   ok | TTFT mean=1085.8 med=1046.6 p99=1263.2ms | lat=1.44s | tput=4.556req/s
+Burst N=10: 10/10 ok | TTFT mean=1234.4 med=1243.9 p99=1283.9ms | lat=1.58s | tput=6.149req/s
+Burst N=15: 15/15 ok | TTFT mean=2429.4 med=2399.2 p99=2693.1ms | lat=2.76s | tput=4.913req/s
+Burst N=20: 20/20 ok | TTFT mean=3091.0 med=3062.2 p99=3579.8ms | lat=3.42s | tput=4.985req/s
+Burst N=30: 30/30 ok | TTFT mean=4327.1 med=4328.0 p99=4517.4ms | lat=4.70s | tput=6.036req/s
+
+=== Key Findings ===
+- MaaS TTFT is MUCH better than Vertex AI endpoint (491ms vs 2731ms single request)
+- MaaS scales better under burst: N=30 TTFT=4327ms vs Vertex AI N=30 TTFT=11933ms
+- MaaS throughput peaks ~6 req/s (vs Vertex AI ~2.4 req/s)
+- MaaS E2E latency: 0.80s (single) vs 4.70s (burst 30) — comparable to GPU performance

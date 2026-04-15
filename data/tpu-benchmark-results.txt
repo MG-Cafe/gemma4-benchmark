@@ -1,0 +1,144 @@
+SSH key found in project metadata; not updating instance.
+Using ssh batch size of 1. Attempting to SSH into 1 nodes with a total of 1 workers.
+SSH: Attempting to connect to worker 0...
+=== TPU v6e-8 Gemma 4 26B-A4B Benchmark ===
+Input: 20000 tokens, Output: 250 tokens
+
+=== Single Request (Baseline) ===
+Total input tokens:                      20000     
+Total generated tokens:                  250       
+Request throughput (req/s):              0.34      
+Output token throughput (tok/s):         84.42     
+Peak output token throughput (tok/s):    115.00    
+Peak concurrent requests:                1.00      
+Total token throughput (tok/s):          6837.69   
+---------------Time to First Token----------------
+Mean TTFT (ms):                          821.02    
+Median TTFT (ms):                        821.02    
+P99 TTFT (ms):                           821.02    
+-----Time per Output Token (excl. 1st token)------
+Mean TPOT (ms):                          8.60      
+Median TPOT (ms):                        8.60      
+P99 TPOT (ms):                           8.60      
+---------------Inter-token Latency----------------
+Mean ITL (ms):                           8.60      
+Median ITL (ms):                         8.69      
+P99 ITL (ms):                            9.12      
+==================================================
+
+=== QPS Sweep (N=10 each) ===
+--- QPS=0.1 ---
+Mean TTFT (ms):                          614.66    
+Median TTFT (ms):                        672.50    
+P99 TTFT (ms):                           683.55    
+Mean TPOT (ms):                          9.59      
+Median TPOT (ms):                        8.91      
+Mean ITL (ms):                           9.59      
+--- QPS=0.15 ---
+Mean TTFT (ms):                          94.48     
+Median TTFT (ms):                        94.86     
+P99 TTFT (ms):                           100.20    
+Mean TPOT (ms):                          8.85      
+Median TPOT (ms):                        8.84      
+Mean ITL (ms):                           8.85      
+--- QPS=0.2 ---
+Mean TTFT (ms):                          92.32     
+Median TTFT (ms):                        93.48     
+P99 TTFT (ms):                           99.24     
+Mean TPOT (ms):                          8.71      
+Median TPOT (ms):                        8.72      
+Mean ITL (ms):                           8.71      
+--- QPS=0.25 ---
+Mean TTFT (ms):                          93.18     
+Median TTFT (ms):                        94.22     
+P99 TTFT (ms):                           101.98    
+Mean TPOT (ms):                          8.71      
+Median TPOT (ms):                        8.74      
+Mean ITL (ms):                           8.71      
+--- QPS=0.3 ---
+Mean TTFT (ms):                          92.80     
+Median TTFT (ms):                        93.54     
+P99 TTFT (ms):                           98.33     
+Mean TPOT (ms):                          8.79      
+Median TPOT (ms):                        8.76      
+Mean ITL (ms):                           8.79      
+--- QPS=0.4 ---
+Mean TTFT (ms):                          93.83     
+Median TTFT (ms):                        96.26     
+P99 TTFT (ms):                           100.37    
+Mean TPOT (ms):                          8.98      
+Median TPOT (ms):                        9.02      
+Mean ITL (ms):                           8.98      
+--- QPS=0.5 ---
+Mean TTFT (ms):                          92.00     
+Median TTFT (ms):                        93.45     
+P99 TTFT (ms):                           99.59     
+Mean TPOT (ms):                          8.87      
+Median TPOT (ms):                        8.90      
+Mean ITL (ms):                           8.87      
+--- QPS=0.7 ---
+Mean TTFT (ms):                          92.11     
+Median TTFT (ms):                        92.73     
+P99 TTFT (ms):                           100.22    
+Mean TPOT (ms):                          8.67      
+Median TPOT (ms):                        8.63      
+Mean ITL (ms):                           8.67      
+--- QPS=1.0 ---
+Mean TTFT (ms):                          91.78     
+Median TTFT (ms):                        91.96     
+P99 TTFT (ms):                           99.34     
+Mean TPOT (ms):                          8.79      
+Median TPOT (ms):                        8.78      
+Mean ITL (ms):                           8.79      
+
+=== Burst Sweep ===
+--- Burst N=1 ---
+Mean TTFT (ms):                          86.85     
+Median TTFT (ms):                        86.85     
+P99 TTFT (ms):                           86.85     
+Mean TPOT (ms):                          8.89      
+Median TPOT (ms):                        8.89      
+Mean ITL (ms):                           8.89      
+--- Burst N=2 ---
+Mean TTFT (ms):                          148.43    
+Median TTFT (ms):                        148.43    
+P99 TTFT (ms):                           155.21    
+Mean TPOT (ms):                          8.92      
+Median TPOT (ms):                        8.92      
+Mean ITL (ms):                           8.95      
+--- Burst N=5 ---
+Mean TTFT (ms):                          298.10    
+Median TTFT (ms):                        347.99    
+P99 TTFT (ms):                           349.69    
+Mean TPOT (ms):                          8.79      
+Median TPOT (ms):                        8.74      
+Mean ITL (ms):                           8.97      
+--- Burst N=8 ---
+Mean TTFT (ms):                          477.17    
+Median TTFT (ms):                        529.30    
+P99 TTFT (ms):                           532.86    
+Mean TPOT (ms):                          8.77      
+Median TPOT (ms):                        8.72      
+Mean ITL (ms):                           9.10      
+--- Burst N=10 ---
+Mean TTFT (ms):                          554.42    
+Median TTFT (ms):                        649.08    
+P99 TTFT (ms):                           652.53    
+Mean TPOT (ms):                          9.09      
+Median TPOT (ms):                        9.00      
+Mean ITL (ms):                           9.49      
+--- Burst N=15 ---
+Mean TTFT (ms):                          1507.77   
+Median TTFT (ms):                        1389.78   
+P99 TTFT (ms):                           3739.50   
+Mean TPOT (ms):                          17.95     
+Median TPOT (ms):                        18.52     
+Mean ITL (ms):                           17.95     
+--- Burst N=20 ---
+Mean TTFT (ms):                          1685.61   
+Median TTFT (ms):                        1210.18   
+P99 TTFT (ms):                           4265.61   
+Mean TPOT (ms):                          26.59     
+Median TPOT (ms):                        28.58     
+Mean ITL (ms):                           26.65     
+--- Burst N=30 ---

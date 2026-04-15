@@ -1,0 +1,667 @@
+#!/usr/bin/env python3
+"""
+Generate benchmark plots for Gemma 4 26B-A4B inference comparison.
+
+All data points are real measurements:
+- RTX Pro 6000: 17 data points (9 QPS sweep + 8 burst sweep) via vllm bench serve
+- TPU v6e-8: 16 data points (9 QPS sweep + 7 burst sweep) via vllm bench serve
+- Vertex AI MaaS: 17 data points (9 QPS sweep + 8 burst sweep) via aiplatform.googleapis.com
+
+Usage:
+    pip install matplotlib numpy
+    python3 scripts/generate-plots.py
+"""
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+os.makedirs('plots', exist_ok=True)
+
+OUTPUT_TOKENS = 250
+
+def calc_e2e(ttft_ms, tpot_ms, n=OUTPUT_TOKENS):
+    """E2E = TTFT + (n-1) * TPOT"""
+    return ttft_ms + (n - 1) * tpot_ms
+
+# =============================================================================
+# MEASURED DATA — RTX Pro 6000 Blackwell (1x GPU, FP8, prefix caching ON)
+# vLLM v0.19.0 on g4-standard-48
+# =============================================================================
+
+# QPS sweep: 10 prompts per rate, seed=42, --random-input-len 20000 --random-output-len 250
+rtx_qps = [
+    # (target_qps, achieved_qps, out_tok_s, ttft_ms, tpot_ms, peak_conc)
+    (0.10, 0.10,  24.41, 120.49, 10.20, 3),
+    (0.15, 0.14,  36.19,  91.38, 10.27, 4),
+    (0.20, 0.19,  47.69,  89.61, 10.41, 4),
+    (0.25, 0.24,  58.96,  88.79, 10.34, 4),
+    (0.30, 0.28,  69.98,  88.39, 10.46, 4),
+    (0.40, 0.37,  91.29,  90.70, 10.50, 4),
+    (0.50, 0.45, 111.71,  91.79, 10.62, 5),
+    (0.70, 0.60, 148.77,  93.95, 11.16, 5),
+    (1.00, 0.78, 195.87,  95.09, 12.17, 6),
+]
+
+# Single request baseline (num-prompts 1, cold start — no prefix caching)
+rtx_baseline = {
+    'ttft_ms': 1009.0,
+    'tpot_ms': 9.27,
+    'itl_median_ms': 9.37,
+    'output_tok_s': 75.4,
+    'e2e_s': 3.32,  # 1009 + 249*9.27 = 3316ms ≈ 3.32s
+}
+
+# Burst sweep: all requests at once (--request-rate inf), seed=42
+rtx_burst = [
+    # (N, achieved_qps, out_tok_s, ttft_ms, tpot_ms, peak_conc)
+    ( 1, 0.42, 105.44,    85.88,  9.18,  1),
+    ( 2, 0.71, 177.08,   141.23, 10.77,  2),
+    ( 5, 1.31, 326.36,   540.11, 13.04,  5),
+    ( 8, 2.08, 519.19,   408.89, 13.62,  8),
+    (10, 1.49, 373.44,  1139.07, 13.38, 10),
+    (15, 1.18, 295.63,  4082.96, 17.32, 15),
+    (20, 1.30, 323.92,  4650.76, 15.23, 20),
+    (30, 1.23, 307.95,  8879.47, 16.03, 30),
+]
+
+# =============================================================================
+# MEASURED DATA — TPU v6e-8 Trillium (8 chips, 256GB HBM, BF16)
+# vLLM Docker (vllm/vllm-tpu:gemma4), TP=8, max-model-len=32768
+# Full 16 data points (9 QPS sweep + 7 burst sweep)
+# =============================================================================
+
+# QPS sweep: 10 prompts per rate, seed=42, --random-input-len 20000 --random-output-len 250
+tpu_qps = [
+    # (target_qps, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_tpot_ms, mean_itl_ms)
+    (0.10, 614.66, 672.50, 683.55, 9.59, 9.59),
+    (0.15,  94.48,  94.86, 100.20, 8.85, 8.85),
+    (0.20,  92.32,  93.48,  99.24, 8.71, 8.71),
+    (0.25,  93.18,  94.22, 101.98, 8.71, 8.71),
+    (0.30,  92.80,  93.54,  98.33, 8.79, 8.79),
+    (0.40,  93.83,  96.26, 100.37, 8.98, 8.98),
+    (0.50,  92.00,  93.45,  99.59, 8.87, 8.87),
+    (0.70,  92.11,  92.73, 100.22, 8.67, 8.67),
+    (1.00,  91.78,  91.96,  99.34, 8.79, 8.79),
+]
+
+# Burst sweep: all requests at once (--request-rate inf), seed=42
+tpu_burst = [
+    # (N, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_tpot_ms, mean_itl_ms)
+    ( 1,   86.85,   86.85,   86.85,  8.89,  8.89),
+    ( 2,  148.43,  148.43,  155.21,  8.92,  8.95),
+    ( 5,  298.10,  347.99,  349.69,  8.79,  8.97),
+    ( 8,  477.17,  529.30,  532.86,  8.77,  9.10),
+    (10,  554.42,  649.08,  652.53,  9.09,  9.49),
+    (15, 1507.77, 1389.78, 3739.50, 17.95, 17.95),
+    (20, 1685.61, 1210.18, 4265.61, 26.59, 26.65),
+]
+
+# Single request baseline
+tpu_baseline = {
+    'ttft_ms': 821.02,  # includes XLA compilation overhead; steady-state ~87ms
+    'tpot_ms': 8.60,
+    'itl_median_ms': 8.69,
+    'output_tok_s': 84.42,
+    'total_tok_s': 6837.69,
+}
+
+# =============================================================================
+# MEASURED DATA — Vertex AI (Managed Model Garden endpoint, TPU-backed)
+# Custom benchmark script, streaming mode
+# Workload: ~20k input (repeated text), 250 output tokens
+# Vertex AI Endpoint data retained for reference but not plotted
+# =============================================================================
+
+# QPS sweep: 10 prompts per rate
+vai_qps = [
+    # (target_qps, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_latency_s, peak_conc, req_throughput)
+    (0.10, 2918.3, 2788.9, 3973.8, 2.92, 1, 0.108),
+    (0.15, 2760.8, 2759.4, 2800.1, 2.76, 1, 0.159),
+    (0.20, 2746.4, 2746.2, 2822.3, 2.75, 1, 0.209),
+    (0.25, 2730.1, 2727.4, 2798.1, 2.73, 1, 0.258),
+    (0.30, 2733.2, 2737.0, 2763.9, 2.73, 1, 0.305),
+    (0.40, 2743.9, 2741.4, 2777.9, 2.74, 2, 0.396),
+    (0.50, 3029.2, 3063.1, 3109.4, 3.03, 2, 0.478),
+    (0.70, 3498.1, 3577.2, 3738.0, 3.50, 3, 0.622),
+    (1.00, 3785.5, 3842.3, 4053.5, 3.79, 5, 0.800),
+]
+
+# Burst sweep: all requests simultaneous
+vai_burst = [
+    # (N, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_latency_s, peak_conc, req_throughput)
+    ( 1, 2731.4, 2731.4, 2731.4, 2.73,  1, 0.366),
+    ( 2, 3316.4, 3316.5, 3339.2, 3.32,  2, 0.599),
+    ( 5, 4553.0, 4593.3, 4604.5, 4.55,  5, 1.086),
+    ( 8, 4914.7, 4940.4, 5035.4, 4.91,  8, 1.588),
+    (10, 6275.1, 6320.0, 6388.5, 6.28, 10, 1.565),
+    (15, 7430.5, 7546.7, 7672.6, 7.43, 15, 1.954),
+    (20, 9882.3, 9983.5, 10185.2, 9.88, 20, 1.962),
+    (30, 11932.5, 12078.7, 12483.8, 11.93, 30, 2.402),
+]
+
+# =============================================================================
+# MEASURED DATA — Vertex AI MaaS (Model-as-a-Service, global endpoint)
+# google/gemma-4-26b-a4b-it-maas via aiplatform.googleapis.com
+# Streaming mode, ~20k input tokens, 250 output tokens
+# =============================================================================
+
+# QPS sweep: 10 prompts per rate
+maas_qps = [
+    # (target_qps, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_latency_s, req_throughput)
+    (0.10, 1221.6, 1167.1, 1437.8, 1.50, 0.109),
+    (0.15, 1000.0, 1149.7, 1299.8, 1.26, 0.163),
+    (0.20,  916.1, 1155.6, 1213.2, 1.20, 0.215),
+    (0.25,  726.8,  575.9, 1253.1, 1.04, 0.267),
+    (0.30,  680.1,  459.7, 1250.4, 1.00, 0.324),
+    (0.40,  648.1,  511.6, 1156.6, 0.95, 0.423),
+    (0.50,  558.7,  518.0,  956.3, 0.86, 0.532),
+    (0.70,  680.5,  615.3, 1173.9, 0.97, 0.730),
+    (1.00,  605.0,  533.6, 1091.3, 0.91, 0.995),
+]
+
+# Burst sweep: all requests simultaneous
+maas_burst = [
+    # (N, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_latency_s, req_throughput)
+    ( 1,  491.1,  491.1,  491.1, 0.80, 1.249),
+    ( 2,  647.3,  647.3,  647.6, 0.81, 2.464),
+    ( 5,  768.9,  639.4, 1282.0, 1.08, 3.118),
+    ( 8, 1085.8, 1046.6, 1263.2, 1.44, 4.556),
+    (10, 1234.4, 1243.9, 1283.9, 1.58, 6.149),
+    (15, 2429.4, 2399.2, 2693.1, 2.76, 4.913),
+    (20, 3091.0, 3062.2, 3579.8, 3.42, 4.985),
+    (30, 4327.1, 4328.0, 4517.4, 4.70, 6.036),
+]
+
+# =============================================================================
+# STYLING
+# =============================================================================
+RTX_COLOR = '#2ecc71'
+TPU_COLOR = '#3498db'
+VAI_COLOR = '#e74c3c'
+MAAS_COLOR = '#9b59b6'
+RTX_LABEL = 'RTX Pro 6000 (17 pts)'
+TPU_LABEL = 'TPU v6e-8 (16 pts)'
+VAI_LABEL = 'Vertex AI Endpoint (17 pts)'
+MAAS_LABEL = 'Vertex AI MaaS (17 pts)'
+plt.rcParams.update({'font.size': 11})
+
+
+# =============================================================================
+# Plot 1: TPOT vs Concurrency (GPU + TPU)
+# =============================================================================
+def plot_01():
+    fig, ax = plt.subplots(figsize=(12, 7))
+    conc = [d[0] for d in rtx_burst]
+    tpot = [d[4] for d in rtx_burst]
+    ax.plot(conc, tpot, 's-', color=RTX_COLOR, linewidth=2.5, markersize=10,
+            label=RTX_LABEL, zorder=3)
+    for c, t in zip(conc, tpot):
+        ax.annotate(f'{t:.1f}ms', xy=(c, t), fontsize=8,
+                    xytext=(8, 8), textcoords='offset points')
+    # TPU v6e-8 full burst data (7 points)
+    tpu_conc = [d[0] for d in tpu_burst]
+    tpu_tpot_vals = [d[4] for d in tpu_burst]
+    ax.plot(tpu_conc, tpu_tpot_vals, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=10,
+            label=TPU_LABEL, zorder=4)
+    for c, t in zip(tpu_conc, tpu_tpot_vals):
+        ax.annotate(f'{t:.1f}ms', xy=(c, t), fontsize=8, fontweight='bold',
+                    color=TPU_COLOR, xytext=(8, -12), textcoords='offset points')
+    ax.axhspan(0, 10, color='green', alpha=0.06)
+    ax.axhspan(10, 14, color='yellow', alpha=0.06)
+    ax.axhspan(14, 30, color='red', alpha=0.06)
+    ax.axvline(x=8, color='orange', linestyle='--', linewidth=1.5, alpha=0.7,
+               label='RTX max_num_seqs=8')
+    ax.set_xlabel('Concurrent Requests', fontsize=13)
+    ax.set_ylabel('Mean TPOT (ms)', fontsize=13)
+    ax.set_title('Decode Latency vs Concurrency\nGPU vs TPU v6e-8 — TPOT degrades under load',
+                 fontsize=14, fontweight='bold')
+    ax.legend(fontsize=10, loc='upper left')
+    ax.grid(True, alpha=0.3)
+    ax.set_xlim(0, 22)
+    ax.set_ylim(6, 30)
+    plt.tight_layout()
+    plt.savefig('plots/01_tpot_vs_concurrency.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print("  Plot 1: plots/01_tpot_vs_concurrency.png")
+
+
+# =============================================================================
+# Plot 2: TTFT vs Concurrency (GPU + TPU)
+# =============================================================================
+def plot_02():
+    fig, ax = plt.subplots(figsize=(12, 7))
+    conc = [d[0] for d in rtx_burst]
+    ttft = [d[3] for d in rtx_burst]
+    ax.plot(conc, ttft, 's-', color=RTX_COLOR, linewidth=2.5, markersize=10,
+            label=RTX_LABEL, zorder=3)
+    for c, t in zip(conc, ttft):
+        ax.annotate(f'{t:.0f}ms', xy=(c, t), fontsize=8,
+                    xytext=(8, 8), textcoords='offset points')
+    # TPU v6e-8 full burst data (7 points)
+    tpu_conc = [d[0] for d in tpu_burst]
+    tpu_ttft_vals = [d[1] for d in tpu_burst]
+    ax.plot(tpu_conc, tpu_ttft_vals, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=10,
+            label=TPU_LABEL, zorder=4)
+    for c, t in zip(tpu_conc, tpu_ttft_vals):
+        ax.annotate(f'{t:.0f}ms', xy=(c, t), fontsize=8, fontweight='bold',
+                    color=TPU_COLOR, xytext=(8, -12), textcoords='offset points')
+    ax.axvline(x=8, color='orange', linestyle='--', linewidth=1.5, alpha=0.7,
+               label='RTX max_num_seqs=8')
+    ax.set_xlabel('Concurrent Requests', fontsize=13)
+    ax.set_ylabel('Mean TTFT (ms)', fontsize=13)
+    ax.set_title('Prefill Latency vs Concurrency\nTPU v6e-8 handles burst 2.8x faster than GPU at N=20',
+                 fontsize=14, fontweight='bold')
+    ax.legend(fontsize=10)
+    ax.grid(True, alpha=0.3)
+    ax.set_xlim(0, 22)
+    plt.tight_layout()
+    plt.savefig('plots/02_ttft_vs_concurrency.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print("  Plot 2: plots/02_ttft_vs_concurrency.png")
+
+
+# =============================================================================
+# Plot 3: E2E Latency vs Concurrency (GPU + TPU)
+# =============================================================================
+def plot_03():
+    fig, ax = plt.subplots(figsize=(12, 7))
+    conc = [d[0] for d in rtx_burst]
+    e2e = [calc_e2e(d[3], d[4]) / 1000 for d in rtx_burst]
+    ax.plot(conc, e2e, 's-', color=RTX_COLOR, linewidth=2.5, markersize=10,
+            label=RTX_LABEL, zorder=3)
+    for c, e in zip(conc, e2e):
+        ax.annotate(f'{e:.1f}s', xy=(c, e), fontsize=9,
+                    xytext=(10, 5), textcoords='offset points')
+    # TPU v6e-8 full burst E2E (7 points)
+    tpu_conc = [d[0] for d in tpu_burst]
+    tpu_e2e = [calc_e2e(d[1], d[4]) / 1000 for d in tpu_burst]
+    ax.plot(tpu_conc, tpu_e2e, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=10,
+            label=TPU_LABEL, zorder=4)
+    ax.axhline(y=3.5, color='red', linestyle=':', linewidth=2.5, label='Target: 3.5s E2E')
+    ax.axhspan(0, 3.5, color='green', alpha=0.04)
+    ax.set_xlabel('Concurrent Requests', fontsize=13)
+    ax.set_ylabel('Mean E2E Latency (seconds)', fontsize=13)
+    ax.set_title('End-to-End Latency vs Concurrency\n20K input tokens -> 250 output tokens',
+                 fontsize=14, fontweight='bold')
+    ax.legend(fontsize=10)
+    ax.grid(True, alpha=0.3)
+    ax.set_xlim(0, 32)
+    ax.set_ylim(0, max(e2e + tpu_e2e) * 1.1)
+    plt.tight_layout()
+    plt.savefig('plots/03_e2e_vs_concurrency.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print("  Plot 3: plots/03_e2e_vs_concurrency.png")
+
+
+# =============================================================================
+# Plot 4: Throughput vs Concurrency (GPU + TPU)
+# =============================================================================
+def plot_04():
+    fig, ax = plt.subplots(figsize=(12, 7))
+    conc = [d[0] for d in rtx_burst]
+    mean_thr = [d[2] for d in rtx_burst]
+    ax.plot(conc, mean_thr, 's-', color=RTX_COLOR, linewidth=2.5, markersize=10,
+            label=RTX_LABEL, zorder=3)
+    # TPU v6e-8: estimate throughput from burst data (N * 250 / duration_approx)
+    tpu_conc = [d[0] for d in tpu_burst]
+    tpu_thr_est = [tpu_baseline['output_tok_s']] + [d[0] * 250 / (calc_e2e(d[1], d[4]) / 1000) for d in tpu_burst[1:]]
+    ax.plot(tpu_conc, tpu_thr_est, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=10,
+            label=TPU_LABEL, zorder=4)
+    ax.axvline(x=8, color='orange', linestyle='--', linewidth=1.5, alpha=0.7,
+               label='RTX max_num_seqs=8')
+    ax.set_xlabel('Concurrent Requests', fontsize=13)
+    ax.set_ylabel('Output Token Throughput (tok/s)', fontsize=13)
+    ax.set_title('Throughput vs Concurrency', fontsize=14, fontweight='bold')
+    ax.legend(fontsize=10, loc='upper right')
+    ax.grid(True, alpha=0.3)
+    ax.set_xlim(0, 32)
+    ax.set_ylim(0, 600)
+    plt.tight_layout()
+    plt.savefig('plots/04_throughput_vs_concurrency.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print("  Plot 4: plots/04_throughput_vs_concurrency.png")
+
+
+# =============================================================================
+# Plot 5: QPS Sweep (RTX + TPU points)
+# =============================================================================
+def plot_05():
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+    qps = [d[1] for d in rtx_qps]
+    ttft = [d[3] for d in rtx_qps]
+    tpot = [d[4] for d in rtx_qps]
+    e2e = [calc_e2e(d[3], d[4]) / 1000 for d in rtx_qps]
+    ax1.plot(qps, ttft, 's-', color=RTX_COLOR, linewidth=2.5, markersize=9, label='RTX TTFT', zorder=3)
+    ax1.plot(qps, tpot, 's--', color=RTX_COLOR, linewidth=2, markersize=8, label='RTX TPOT', alpha=0.7, zorder=3)
+    # TPU v6e-8 full QPS sweep (9 points)
+    tpu_qps_rates = [d[0] for d in tpu_qps]
+    tpu_ttft_vals = [d[1] for d in tpu_qps]
+    tpu_tpot_vals = [d[4] for d in tpu_qps]
+    ax1.plot(tpu_qps_rates, tpu_ttft_vals, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=9, label='TPU TTFT', zorder=4)
+    ax1.plot(tpu_qps_rates, tpu_tpot_vals, 'D--', color=TPU_COLOR, linewidth=2, markersize=8, label='TPU TPOT', alpha=0.7, zorder=4)
+    ax1.set_xlabel('Request Rate (QPS)', fontsize=12)
+    ax1.set_ylabel('Latency (ms)', fontsize=12)
+    ax1.set_title('TTFT & TPOT vs QPS', fontsize=13, fontweight='bold')
+    ax1.legend(fontsize=8)
+    ax1.grid(True, alpha=0.3)
+    ax2.plot(qps, e2e, 's-', color=RTX_COLOR, linewidth=2.5, markersize=9, label='RTX', zorder=3)
+    tpu_e2e_qps = [calc_e2e(d[1], d[4]) / 1000 for d in tpu_qps]
+    ax2.plot(tpu_qps_rates, tpu_e2e_qps, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=9, label='TPU', zorder=4)
+    ax2.axhline(y=3.5, color='red', linestyle=':', linewidth=2, label='Target: 3.5s')
+    ax2.set_xlabel('Achieved Request Rate (QPS)', fontsize=12)
+    ax2.set_ylabel('E2E Latency (seconds)', fontsize=12)
+    ax2.set_title('E2E Latency vs QPS', fontsize=13, fontweight='bold')
+    ax2.legend(fontsize=9)
+    ax2.grid(True, alpha=0.3)
+    plt.suptitle('Steady-State Performance', fontsize=15, fontweight='bold', y=1.02)
+    plt.tight_layout()
+    plt.savefig('plots/05_qps_sweep_latency.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print("  Plot 5: plots/05_qps_sweep_latency.png")
+
+
+# =============================================================================
+# Plot 6: Latency Breakdown Bar Chart (GPU + TPU)
+# =============================================================================
+def plot_06():
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
+    scenarios = ['N=1', 'N=2', 'N=5', 'N=8', 'N=10', 'N=15', 'N=20', 'N=30']
+    x = np.arange(len(scenarios))
+    width = 0.35
+    rtx_ttft = [d[3] for d in rtx_burst]
+    rtx_tpot = [d[4] for d in rtx_burst]
+    bars1 = ax1.bar(x - width/2, rtx_ttft, width, label='RTX', color=RTX_COLOR, alpha=0.85, zorder=3)
+    # TPU v6e-8 full burst data (7 points matching N=1,2,5,8,10,15,20)
+    tpu_ttft_map = {d[0]: d[1] for d in tpu_burst}
+    tpu_tpot_map = {d[0]: d[4] for d in tpu_burst}
+    burst_ns = [1, 2, 5, 8, 10, 15, 20, 30]
+    tpu_bar_ttft = [tpu_ttft_map.get(n, 0) for n in burst_ns]
+    tpu_bar_tpot = [tpu_tpot_map.get(n, 0) for n in burst_ns]
+    tpu_valid = [i for i, n in enumerate(burst_ns) if n in tpu_ttft_map]
+    ax1.bar([x[i] + width/2 for i in tpu_valid], [tpu_bar_ttft[i] for i in tpu_valid], width,
+            label='TPU', color=TPU_COLOR, alpha=0.85, zorder=3)
+    ax1.set_ylabel('Mean TTFT (ms)', fontsize=12)
+    ax1.set_title('Time to First Token', fontsize=13, fontweight='bold')
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(scenarios)
+    ax1.legend(fontsize=10)
+    ax1.grid(True, alpha=0.3, axis='y')
+    bars2 = ax2.bar(x - width/2, rtx_tpot, width, label='RTX', color=RTX_COLOR, alpha=0.85, zorder=3)
+    ax2.bar([x[i] + width/2 for i in tpu_valid], [tpu_bar_tpot[i] for i in tpu_valid], width,
+            label='TPU', color=TPU_COLOR, alpha=0.85, zorder=3)
+    ax2.set_ylabel('Mean TPOT (ms)', fontsize=12)
+    ax2.set_title('Time per Output Token', fontsize=13, fontweight='bold')
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(scenarios)
+    ax2.legend(fontsize=10)
+    ax2.grid(True, alpha=0.3, axis='y')
+    plt.suptitle('Latency Breakdown: TTFT & TPOT', fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    plt.savefig('plots/06_latency_breakdown.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print("  Plot 6: plots/06_latency_breakdown.png")
+
+
+# =============================================================================
+# Plot 8: E2E Breakdown Stacked (GPU + TPU)
+# =============================================================================
+def plot_08():
+    fig, ax = plt.subplots(figsize=(14, 7))
+    scenarios = ['N=1', 'N=5', 'N=8', 'N=10', 'N=20', 'N=30']
+    burst_idx = [0, 2, 3, 4, 6, 7]
+    x = np.arange(len(scenarios))
+    width = 0.35
+    rtx_ttft_s = [rtx_burst[i][3] / 1000 for i in burst_idx]
+    rtx_decode_s = [rtx_burst[i][4] * (OUTPUT_TOKENS - 1) / 1000 for i in burst_idx]
+    ax.bar(x - width/2, rtx_ttft_s, width, label='RTX TTFT (prefill)',
+           color=RTX_COLOR, alpha=0.9, zorder=3)
+    ax.bar(x - width/2, rtx_decode_s, width, bottom=rtx_ttft_s,
+           label='RTX Decode', color=RTX_COLOR, alpha=0.4, zorder=3, hatch='//')
+    # TPU v6e-8 full burst data for stacked bars
+    tpu_ttft_map2 = {d[0]: d[1] / 1000 for d in tpu_burst}
+    tpu_decode_map2 = {d[0]: d[4] * 249 / 1000 for d in tpu_burst}
+    sel_ns = [1, 5, 8, 10, 20]
+    tpu_bar_idx = [i for i, n in enumerate([1, 5, 8, 10, 20, 30]) if n in tpu_ttft_map2]
+    tpu_ttft_s = [tpu_ttft_map2.get(n, 0) for n in [1, 5, 8, 10, 20, 30] if n in tpu_ttft_map2]
+    tpu_decode_s = [tpu_decode_map2.get(n, 0) for n in [1, 5, 8, 10, 20, 30] if n in tpu_decode_map2]
+    ax.bar([x[i] + width/2 for i in tpu_bar_idx], tpu_ttft_s, width,
+           label='TPU TTFT (prefill)', color=TPU_COLOR, alpha=0.9, zorder=3)
+    ax.bar([x[i] + width/2 for i in tpu_bar_idx], tpu_decode_s, width,
+           bottom=tpu_ttft_s, label='TPU Decode', color=TPU_COLOR, alpha=0.4, zorder=3, hatch='//')
+    ax.axhline(y=3.5, color='red', linestyle=':', linewidth=2.5, label='Target: 3.5s E2E')
+    ax.set_xlabel('Burst Size', fontsize=13)
+    ax.set_ylabel('Time (seconds)', fontsize=13)
+    ax.set_title('E2E Latency Breakdown: TTFT + Decode', fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(scenarios)
+    ax.legend(fontsize=9, loc='upper left')
+    ax.grid(True, alpha=0.3, axis='y')
+    plt.tight_layout()
+    plt.savefig('plots/08_e2e_breakdown.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print("  Plot 8: plots/08_e2e_breakdown.png")
+
+
+# =============================================================================
+# Plot 9: GPU vs TPU vs MaaS Comparison (3-Way, 4-panel)
+# =============================================================================
+def plot_09():
+    plt.rcParams.update({
+        'figure.facecolor': '#1a1a2e', 'axes.facecolor': '#16213e',
+        'axes.edgecolor': '#444', 'axes.labelcolor': '#eee',
+        'text.color': '#eee', 'xtick.color': '#ccc', 'ytick.color': '#ccc',
+        'grid.color': '#333', 'grid.alpha': 0.4,
+    })
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('Gemma 4 26B-A4B -- 3-Way Comparison\n(~20k input, 250 output tokens)',
+                 fontsize=18, fontweight='bold', color='white', y=0.98)
+    labels = ['GPU\n(RTX 6000)', 'TPU v6e-8', 'Vertex AI\n(MaaS)']
+    colors = ['#00ff88', '#ff6b6b', '#bb86fc']
+
+    # Panel 1: Single TTFT (from baseline dicts and burst[0] data)
+    ax = axes[0,0]
+    vals = [rtx_baseline['ttft_ms'], tpu_baseline['ttft_ms'], maas_burst[0][1]]
+    bars = ax.bar(labels, vals, color=colors, alpha=0.85, edgecolor='white', linewidth=0.5, width=0.6)
+    for b, v in zip(bars, vals):
+        ax.text(b.get_x()+b.get_width()/2, b.get_height()+50, f'{v:,}ms', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
+    ax.set_ylabel('TTFT (ms)')
+    ax.set_title('Single Request: TTFT', fontweight='bold', color='#ffd700')
+    ax.grid(True, axis='y')
+
+    # Panel 2: Single E2E (from baseline dicts and burst[0] data)
+    ax = axes[0,1]
+    vals = [rtx_baseline['e2e_s'], calc_e2e(tpu_baseline['ttft_ms'], tpu_baseline['tpot_ms'])/1000, maas_burst[0][4]]
+    bars = ax.bar(labels, vals, color=colors, alpha=0.85, edgecolor='white', linewidth=0.5, width=0.6)
+    for b, v in zip(bars, vals):
+        ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.05, f'{v:.2f}s', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
+    ax.set_ylabel('E2E Latency (s)')
+    ax.set_title('Single Request: E2E Latency', fontweight='bold', color='#ffd700')
+    ax.grid(True, axis='y')
+    ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
+    ax.legend(facecolor='#16213e', edgecolor='#444')
+
+    # Panel 3: Burst 20 TTFT (from burst arrays, N=20 index)
+    ax = axes[1,0]
+    vals = [rtx_burst[6][3], tpu_burst[6][1], maas_burst[6][1]]
+    bars = ax.bar(labels, vals, color=colors, alpha=0.85, edgecolor='white', linewidth=0.5, width=0.6)
+    for b, v in zip(bars, vals):
+        ax.text(b.get_x()+b.get_width()/2, b.get_height()+200, f'{v/1000:.1f}s', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
+    ax.set_ylabel('Mean TTFT (ms)')
+    ax.set_title('Burst 20: Mean TTFT', fontweight='bold', color='#ffd700')
+    ax.grid(True, axis='y')
+
+    # Panel 4: Burst TTFT comparison curve (GPU, TPU, MaaS only)
+    ax = axes[1,1]
+    rtx_burst_ttft = [d[3] for d in rtx_burst]
+    rtx_burst_n = [d[0] for d in rtx_burst]
+    ax.plot(rtx_burst_n, [t/1000 for t in rtx_burst_ttft], 's-', color='#00ff88', linewidth=2, markersize=8, label='GPU (RTX)')
+    tpu_bn = [d[0] for d in tpu_burst]
+    tpu_bt = [d[1]/1000 for d in tpu_burst]
+    ax.plot(tpu_bn, tpu_bt, 'D-', color='#ff6b6b', linewidth=2, markersize=8, label='TPU v6e-8', zorder=4)
+    maas_burst_n = [d[0] for d in maas_burst]
+    maas_burst_ttft = [d[1] for d in maas_burst]
+    ax.plot(maas_burst_n, [t/1000 for t in maas_burst_ttft], '^-', color='#bb86fc', linewidth=2, markersize=8, label='Vertex AI MaaS')
+    ax.set_xlabel('Burst Size (N concurrent)', color='#ccc')
+    ax.set_ylabel('Mean TTFT (s)')
+    ax.set_title('Burst Sweep: TTFT Comparison', fontweight='bold', color='#ffd700')
+    ax.legend(facecolor='#16213e', edgecolor='#444')
+    ax.grid(True)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
+    plt.savefig('plots/09_gpu_tpu_vertexai_comparison.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    plt.rcParams.update({'figure.facecolor': 'white', 'axes.facecolor': 'white',
+        'axes.edgecolor': 'black', 'axes.labelcolor': 'black', 'text.color': 'black',
+        'xtick.color': 'black', 'ytick.color': 'black', 'grid.color': '#ccc', 'grid.alpha': 0.3})
+    print("  Plot 9: plots/09_gpu_tpu_vertexai_comparison.png")
+
+
+# =============================================================================
+# Plot 10: Comparison Table (GPU, TPU, MaaS)
+# =============================================================================
+def plot_10():
+    plt.rcParams.update({
+        'figure.facecolor': '#1a1a2e', 'axes.facecolor': '#16213e',
+        'axes.edgecolor': '#444', 'axes.labelcolor': '#eee', 'text.color': '#eee',
+    })
+    fig, ax = plt.subplots(figsize=(16, 9))
+    ax.axis('off')
+    col_labels = ['Metric', 'GPU (RTX Pro 6000)', 'TPU v6e-8 (vLLM)', 'Vertex AI MaaS', 'Winner']
+    table_data = [
+        ['-- Single Request --', '', '', '', ''],
+        ['TTFT (ms)', '1,009', '821 (87 steady)', '491', 'MaaS'],
+        ['TPOT (ms)', '9.27', '8.60', 'N/A*', 'TPU'],
+        ['E2E Latency (s)', '3.32', '2.97', '0.80', 'MaaS'],
+        ['-- 0.3 QPS (cold) --', '', '', '', ''],
+        ['Mean TTFT (ms)', '⚠️1,009*', '93', '680', 'TPU'],
+        ['Est. E2E (s)', '⚠️3.61*', '2.28', '1.00', 'MaaS'],
+        ['-- Burst 20 --', '', '', '', ''],
+        ['Mean TTFT (ms)', '4,651', '1,686', '3,091', 'TPU'],
+        ['Mean TPOT (ms)', '15.23', '26.59', 'N/A*', 'GPU'],
+        ['Output tok/s', '323.9', 'N/A', '~4.99 req/s', 'GPU'],
+        ['Mean E2E (s)', '8.44', '8.31', '3.42', 'MaaS'],
+        ['-- Cost --', '', '', '', ''],
+        ['On-demand ($/hr)', '$4.50', '$21.60', 'Pay-per-token', 'GPU'],
+        ['Cost/M out tokens', '$16.58', '$71.07', '$12.60**', 'MaaS'],
+    ]
+    cell_colors = []
+    for row in table_data:
+        if row[0].startswith('--'):
+            cell_colors.append(['#0f3460']*5)
+        else:
+            cell_colors.append(['#16213e']*5)
+    table = ax.table(cellText=table_data, colLabels=col_labels, cellColours=cell_colors,
+                     colColours=['#0f3460']*5, loc='center', cellLoc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1, 1.7)
+    for key, cell in table.get_celld().items():
+        cell.set_edgecolor('#444')
+        cell.set_text_props(color='white')
+        if key[0] == 0:
+            cell.set_text_props(fontweight='bold', color='white')
+    ax.set_title('GPU vs TPU vs MaaS — 3-Way Comparison\n(~20k input, 250 output tokens)',
+                 fontsize=16, fontweight='bold', color='white', pad=20)
+    fig.text(0.5, 0.02, '* GPU cold TTFT used (customer has low cache hit rate)  ** MaaS: $0.15/M in + $0.60/M out (incl. 20K input cost)',
+             ha='center', fontsize=9, color='#888', style='italic')
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+    plt.savefig('plots/10_gpu_tpu_vertexai_table.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    plt.rcParams.update({'figure.facecolor': 'white', 'axes.facecolor': 'white',
+        'axes.edgecolor': 'black', 'axes.labelcolor': 'black', 'text.color': 'black'})
+    print("  Plot 10: plots/10_gpu_tpu_vertexai_table.png")
+
+
+# =============================================================================
+# Plot 14: MaaS Dashboard (4-panel, MaaS data only)
+# =============================================================================
+def plot_14():
+    plt.rcParams.update({
+        'figure.facecolor': '#1a1a2e', 'axes.facecolor': '#16213e',
+        'axes.edgecolor': '#444', 'axes.labelcolor': '#eee', 'text.color': '#eee',
+        'xtick.color': '#ccc', 'ytick.color': '#ccc', 'grid.color': '#333', 'grid.alpha': 0.4,
+    })
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('Vertex AI MaaS -- Gemma 4 26B-A4B Benchmark\n(~20k input, 250 output tokens)',
+                 fontsize=18, fontweight='bold', color='white', y=0.98)
+
+    # QPS sweep TTFT
+    ax = axes[0,0]
+    qps_rates = [d[0] for d in maas_qps]
+    ttfts = [d[1] for d in maas_qps]
+    ax.plot(qps_rates, ttfts, 'o-', color='#bb86fc', linewidth=2.5, markersize=8, label='MaaS')
+    ax.fill_between(qps_rates, [d[2] for d in maas_qps], [d[3] for d in maas_qps], alpha=0.2, color='#bb86fc')
+    ax.set_xlabel('Request Rate (QPS)')
+    ax.set_ylabel('Mean TTFT (ms)')
+    ax.set_title('QPS Sweep: TTFT vs Request Rate', fontweight='bold', color='#ffd700')
+    ax.legend(facecolor='#16213e', edgecolor='#444')
+    ax.grid(True)
+
+    # QPS sweep E2E latency
+    ax = axes[0,1]
+    maas_lat = [d[4] for d in maas_qps]
+    ax.plot(qps_rates, maas_lat, 'o-', color='#bb86fc', linewidth=2.5, markersize=8, label='MaaS')
+    ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
+    ax.set_xlabel('Request Rate (QPS)')
+    ax.set_ylabel('Mean E2E Latency (s)')
+    ax.set_title('QPS Sweep: E2E Latency', fontweight='bold', color='#ffd700')
+    ax.legend(facecolor='#16213e', edgecolor='#444')
+    ax.grid(True)
+
+    # Burst TTFT
+    ax = axes[1,0]
+    burst_n = [d[0] for d in maas_burst]
+    burst_ttft = [d[1] for d in maas_burst]
+    ax.plot(burst_n, [t/1000 for t in burst_ttft], 'o-', color='#bb86fc', linewidth=2.5, markersize=8, label='MaaS')
+    ax.set_xlabel('Burst Size (N concurrent)')
+    ax.set_ylabel('Mean TTFT (s)')
+    ax.set_title('Burst Sweep: TTFT vs Concurrency', fontweight='bold', color='#ffd700')
+    ax.legend(facecolor='#16213e', edgecolor='#444')
+    ax.grid(True)
+
+    # Burst throughput
+    ax = axes[1,1]
+    burst_tput = [d[5] for d in maas_burst]
+    ax.plot(burst_n, burst_tput, 'D-', color='#bb86fc', linewidth=2.5, markersize=8, label='MaaS')
+    ax.set_xlabel('Burst Size (N concurrent)')
+    ax.set_ylabel('Throughput (req/s)')
+    ax.set_title('Burst Sweep: Throughput vs Concurrency', fontweight='bold', color='#ffd700')
+    ax.legend(facecolor='#16213e', edgecolor='#444')
+    ax.grid(True)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
+    plt.savefig('plots/14_maas_benchmark.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    plt.rcParams.update({'figure.facecolor': 'white', 'axes.facecolor': 'white',
+        'axes.edgecolor': 'black', 'axes.labelcolor': 'black', 'text.color': 'black',
+        'xtick.color': 'black', 'ytick.color': 'black', 'grid.color': '#ccc', 'grid.alpha': 0.3})
+    print("  Plot 14: plots/14_maas_benchmark.png")
+
+
+# =============================================================================
+if __name__ == '__main__':
+    total = len(rtx_qps)+len(rtx_burst)+len(tpu_qps)+len(tpu_burst)+len(maas_qps)+len(maas_burst)
+    print(f"\nGenerating 10 benchmark plots...")
+    print(f"  RTX: {len(rtx_qps)} QPS + {len(rtx_burst)} burst = {len(rtx_qps)+len(rtx_burst)} data points")
+    print(f"  TPU: {len(tpu_qps)} QPS + {len(tpu_burst)} burst = {len(tpu_qps)+len(tpu_burst)} data points")
+    print(f"  Vertex AI MaaS: {len(maas_qps)} QPS + {len(maas_burst)} burst = {len(maas_qps)+len(maas_burst)} data points")
+    print(f"  Total: {total} data points")
+    print("=" * 60)
+
+    plot_01()
+    plot_02()
+    plot_03()
+    plot_04()
+    plot_05()
+    plot_06()
+    plot_08()
+    plot_09()
+    plot_10()
+    plot_14()
+
+    print("=" * 60)
+    print("All 10 plots saved to plots/")
+    print()
