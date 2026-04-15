@@ -1,0 +1,154 @@
+======================================================================
+GPU Benchmark - P90 E2E (customer flags, cold TTFT)
+Input: ~20000 tokens, Output: 250 tokens
+======================================================================
+
+>>> PHASE 1: Single Request (10 runs, fresh prompts)
+  Run 1/10: E2E=8.038s  TTFT=5607.1ms  TPOT=9.80ms
+  Run 2/10: E2E=8.052s  TTFT=5619.8ms  TPOT=9.81ms
+  Run 3/10: E2E=8.078s  TTFT=5643.4ms  TPOT=9.82ms
+  Run 4/10: E2E=8.330s  TTFT=5896.2ms  TPOT=9.82ms
+  Run 5/10: E2E=8.093s  TTFT=5658.8ms  TPOT=9.82ms
+  Run 6/10: E2E=8.274s  TTFT=5842.5ms  TPOT=9.80ms
+  Run 7/10: E2E=8.080s  TTFT=5646.0ms  TPOT=9.82ms
+  Run 8/10: E2E=8.275s  TTFT=5841.6ms  TPOT=9.81ms
+  Run 9/10: E2E=8.062s  TTFT=5627.7ms  TPOT=9.82ms
+  Run 10/10: E2E=8.356s  TTFT=5921.8ms  TPOT=9.82ms
+
+  ===== SINGLE REQUEST (10 cold runs) =====
+  Requests: 10
+  E2E:  mean=8.164s  med=8.087s  P90=8.333s  P99=8.354s  min=8.038s  max=8.356s
+  TTFT: mean=5730.5ms  med=5652.4ms  P90=5898.7ms  P99=5919.5ms
+  TPOT: mean=9.81ms  med=9.82ms  P90=9.82ms
+
+>>> PHASE 2: QPS Sweep
+
+  ===== QPS=0.1 =====
+  Requests: 10
+  E2E:  mean=3.262s  med=2.696s  P90=3.279s  P99=7.817s  min=2.695s  max=8.321s
+  TTFT: mean=825.6ms  med=262.8ms  P90=827.7ms  P99=5381.5ms
+  TPOT: mean=9.82ms  med=9.81ms  P90=9.83ms
+
+  ===== QPS=0.15 =====
+  Requests: 10
+  E2E:  mean=3.300s  med=2.713s  P90=3.508s  P99=7.766s  min=2.697s  max=8.239s
+  TTFT: mean=830.0ms  med=264.6ms  P90=1057.3ms  P99=5178.9ms
+  TPOT: mean=9.96ms  med=9.86ms  P90=10.33ms
+
+  ===== QPS=0.2 =====
+  Requests: 10
+  E2E:  mean=3.381s  med=2.695s  P90=4.133s  P99=8.168s  min=2.691s  max=8.616s
+  TTFT: mean=895.7ms  med=260.8ms  P90=1442.9ms  P99=5474.5ms
+  TPOT: mean=10.01ms  med=9.81ms  P90=10.80ms
+
+  ===== QPS=0.25 =====
+  Requests: 10
+  E2E:  mean=3.477s  med=2.695s  P90=4.970s  P99=8.193s  min=2.693s  max=8.551s
+  TTFT: mean=967.9ms  med=260.4ms  P90=2194.4ms  P99=5416.6ms
+  TPOT: mean=10.11ms  med=9.82ms  P90=11.15ms
+
+  ===== QPS=0.3 =====
+  Requests: 10
+  E2E:  mean=3.638s  med=2.687s  P90=5.897s  P99=8.579s  min=2.686s  max=8.877s
+  TTFT: mean=1056.2ms  med=255.1ms  P90=2919.7ms  P99=5601.4ms
+  TPOT: mean=10.40ms  med=9.81ms  P90=11.96ms
+
+  ===== QPS=0.4 =====
+  Requests: 10
+  E2E:  mean=3.812s  med=2.708s  P90=6.609s  P99=8.613s  min=2.678s  max=8.836s
+  TTFT: mean=1205.4ms  med=240.5ms  P90=3711.6ms  P99=5726.8ms
+  TPOT: mean=10.50ms  med=9.91ms  P90=11.74ms
+
+  ===== QPS=0.5 =====
+  Requests: 10
+  E2E:  mean=4.128s  med=2.950s  P90=7.146s  P99=8.745s  min=2.767s  max=8.923s
+  TTFT: mean=1388.4ms  med=274.4ms  P90=4195.3ms  P99=5795.1ms
+  TPOT: mean=11.03ms  med=10.71ms  P90=11.94ms
+
+  ===== QPS=0.7 =====
+  Requests: 10
+  E2E:  mean=4.874s  med=3.571s  P90=8.213s  P99=9.347s  min=2.854s  max=9.473s
+  TTFT: mean=1932.9ms  med=514.1ms  P90=5145.6ms  P99=6282.5ms
+  TPOT: mean=11.91ms  med=12.38ms  P90=12.52ms
+
+  ===== QPS=1.0 =====
+  Requests: 10
+  E2E:  mean=5.311s  med=4.582s  P90=8.127s  P99=8.914s  min=3.078s  max=9.002s
+  TTFT: mean=2372.5ms  med=1686.5ms  P90=5178.6ms  P99=5966.0ms
+  TPOT: mean=11.94ms  med=12.11ms  P90=12.14ms
+
+>>> PHASE 3: Burst Sweep
+
+  ===== BURST N=1 =====
+  Requests: 1
+  E2E:  mean=8.401s  med=8.401s  P90=0.000s  P99=0.000s  min=8.401s  max=8.401s
+  TTFT: mean=5964.8ms  med=5964.8ms  P90=0.0ms  P99=0.0ms
+  TPOT: mean=9.82ms  med=9.82ms  P90=0.00ms
+
+  ===== BURST N=2 =====
+  Requests: 2
+  E2E:  mean=8.535s  med=8.535s  P90=8.538s  P99=8.539s  min=8.531s  max=8.539s
+  TTFT: mean=5854.2ms  med=5854.2ms  P90=5858.6ms  P99=5859.6ms
+  TPOT: mean=10.81ms  med=10.81ms  P90=10.81ms
+
+  ===== BURST N=5 =====
+  Requests: 5
+  E2E:  mean=9.143s  med=9.145s  P90=9.146s  P99=9.146s  min=9.134s  max=9.146s
+  TTFT: mean=6261.1ms  med=6263.4ms  P90=6264.0ms  P99=6264.2ms
+  TPOT: mean=11.86ms  med=11.86ms  P90=11.86ms
+
+  ===== BURST N=8 =====
+  Requests: 8
+  E2E:  mean=8.655s  med=8.657s  P90=8.659s  P99=8.659s  min=8.641s  max=8.659s
+  TTFT: mean=6018.9ms  med=6019.9ms  P90=6021.0ms  P99=6021.1ms
+  TPOT: mean=11.08ms  med=11.08ms  P90=11.08ms
+
+  ===== BURST N=10 =====
+  Requests: 10
+  E2E:  mean=9.384s  med=8.809s  P90=11.699s  P99=11.706s  min=8.770s  max=11.707s
+  TTFT: mean=6719.1ms  med=6144.3ms  P90=9019.9ms  P99=9028.7ms
+  TPOT: mean=11.10ms  med=11.19ms  P90=11.20ms
+
+  ===== BURST N=15 =====
+  Requests: 15
+  E2E:  mean=10.019s  med=8.527s  P90=11.735s  P99=11.735s  min=8.486s  max=11.735s
+  TTFT: mean=7268.4ms  med=5871.2ms  P90=8870.6ms  P99=8871.4ms
+  TPOT: mean=11.49ms  med=11.16ms  P90=11.88ms
+
+  ===== BURST N=20 =====
+  Requests: 20
+  E2E:  mean=11.266s  med=11.868s  P90=14.877s  P99=14.878s  min=8.841s  max=14.878s
+  TTFT: mean=8600.8ms  med=9221.4ms  P90=12147.2ms  P99=12148.2ms
+  TPOT: mean=11.13ms  med=11.14ms  P90=11.15ms
+
+  ===== BURST N=30 =====
+  Requests: 30
+  E2E:  mean=13.069s  med=11.824s  P90=18.074s  P99=18.075s  min=8.732s  max=18.075s
+  TTFT: mean=10368.5ms  med=9160.7ms  P90=15202.3ms  P99=15203.8ms
+  TPOT: mean=11.30ms  med=11.19ms  P90=11.86ms
+
+======================================================================
+SUMMARY - P90 E2E
+======================================================================
+Scenario               Mean E2E    P90 E2E    P99 E2E    Mean TTFT     P90 TTFT    Mean TPOT
+------------------------------------------------------------------------------------------
+single_10runs            8.164s     8.333s     8.354s     5730.5ms     5898.7ms       9.81ms
+qps_0.1                  3.262s     3.279s     7.817s      825.6ms      827.7ms       9.82ms
+qps_0.15                 3.300s     3.508s     7.766s      830.0ms     1057.3ms       9.96ms
+qps_0.2                  3.381s     4.133s     8.168s      895.7ms     1442.9ms      10.01ms
+qps_0.25                 3.477s     4.970s     8.193s      967.9ms     2194.4ms      10.11ms
+qps_0.3                  3.638s     5.897s     8.579s     1056.2ms     2919.7ms      10.40ms
+qps_0.4                  3.812s     6.609s     8.613s     1205.4ms     3711.6ms      10.50ms
+qps_0.5                  4.128s     7.146s     8.745s     1388.4ms     4195.3ms      11.03ms
+qps_0.7                  4.874s     8.213s     9.347s     1932.9ms     5145.6ms      11.91ms
+qps_1.0                  5.311s     8.127s     8.914s     2372.5ms     5178.6ms      11.94ms
+burst_1                  8.401s     0.000s     0.000s     5964.8ms        0.0ms       9.82ms
+burst_2                  8.535s     8.538s     8.539s     5854.2ms     5858.6ms      10.81ms
+burst_5                  9.143s     9.146s     9.146s     6261.1ms     6264.0ms      11.86ms
+burst_8                  8.655s     8.659s     8.659s     6018.9ms     6021.0ms      11.08ms
+burst_10                 9.384s    11.699s    11.706s     6719.1ms     9019.9ms      11.10ms
+burst_15                10.019s    11.735s    11.735s     7268.4ms     8870.6ms      11.49ms
+burst_20                11.266s    14.877s    14.878s     8600.8ms    12147.2ms      11.13ms
+burst_30                13.069s    18.074s    18.075s    10368.5ms    15202.3ms      11.30ms
+
+JSON saved to /tmp/gpu-p90-results.json
