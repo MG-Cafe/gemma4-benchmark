@@ -74,7 +74,7 @@ gpu_burst = [
 
 # =============================================================================
 # MEASURED DATA — TPU v6e-8 Trillium (8 chips, 256GB HBM, BF16)
-# vLLM Docker (vllm/vllm-tpu:gemma4), TP=8, max-model-len=128000
+# vLLM Docker (vllm/vllm-tpu:nightly), TP=8, max-model-len=128000
 # =============================================================================
 
 # QPS sweep: 10 prompts per rate, fresh random prompts per QPS level

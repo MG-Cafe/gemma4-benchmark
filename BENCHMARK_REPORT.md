@@ -48,7 +48,7 @@
 | Memory | 256 GB HBM total (32 GB/chip) |
 | Precision | BF16 (no quantization) |
 | Tensor Parallelism | 8 |
-| Max Model Length | 32,768 tokens |
+| Max Model Length | 128,000 tokens |
 | KV cache blocks | 8,888 per layer (30 layers) |
 | Docker image | `vllm/vllm-tpu:gemma4` |
 | On-demand pricing | $21.60/hr ($2.70/chip × 8) |
@@ -143,7 +143,7 @@ vllm serve google/gemma-4-26B-A4B-it \
 # Docker: vllm/vllm-tpu:gemma4
 # VLLM_ARGS:
 --model google/gemma-4-26B-A4B-it \
-    --max-model-len 32768 \
+    --max-model-len 128000 \
     --tensor-parallel-size 8 \
     --disable_chunked_mm_input
 ```
@@ -322,7 +322,7 @@ vllm serve google/gemma-4-26B-A4B-it \
 
 ### ⚠️ TPU max-model-len Mismatch
 
-The TPU benchmark uses `--max-model-len 32768`, but the customer's production config requires **128,000 tokens**. A larger max context length may require upgrading to **v6e-16** or could cause **significant performance degradation** due to increased KV cache memory pressure on v6e-8.
+The TPU benchmark uses `--max-model-len 128000`, matching the customer's production config requirement of **128,000 tokens**. The v6e-8 with 256GB HBM successfully supports this full context length.
 
 ### ⚠️ MaaS Uses Different Model Variant
 

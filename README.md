@@ -168,7 +168,7 @@ gcloud compute tpus tpu-vm ssh gemma4-tpu-bench --zone=us-east5-b
 docker run -d --name vllm-gemma4 --privileged --net=host \
     -v /dev/shm:/dev/shm --shm-size 16g \
     -e "VLLM_ARGS=--model google/gemma-4-26B-A4B-it \
-        --max-model-len 32768 --tensor-parallel-size 8 \
+        --max-model-len 128000 --tensor-parallel-size 8 \
         --disable_chunked_mm_input" \
     vllm/vllm-tpu:gemma4
 

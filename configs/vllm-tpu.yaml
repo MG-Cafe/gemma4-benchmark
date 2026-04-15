@@ -5,14 +5,14 @@ model: google/gemma-4-26B-A4B-it
 host: "0.0.0.0"
 port: 8000
 dtype: bfloat16
-max_model_len: 32768
+max_model_len: 128000
 max_num_seqs: 8
 tensor_parallel_size: 8
 
 # Notes:
 #   - No quantization (BF16 native on TPU)
 #   - Tensor parallelism across all 8 chips
-#   - max_model_len 32768 (fits in 256GB HBM)
+#   - max_model_len 128000 (fits in 256GB HBM)
 #   - Docker image: vllm/vllm-tpu:gemma4
 #   - disable_chunked_mm_input required for Gemma4
 
@@ -20,6 +20,6 @@ tensor_parallel_size: 8
 # docker run -d --name vllm-gemma4 --privileged --net=host \
 #     -v /dev/shm:/dev/shm --shm-size 16g \
 #     -e "VLLM_ARGS=--model google/gemma-4-26B-A4B-it \
-#         --max-model-len 32768 --tensor-parallel-size 8 \
+#         --max-model-len 128000 --tensor-parallel-size 8 \
 #         --disable_chunked_mm_input" \
 #     vllm/vllm-tpu:gemma4
