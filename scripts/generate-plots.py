@@ -4,7 +4,7 @@ Generate benchmark plots for Gemma 4 26B-A4B inference comparison.
 
 All data points are real measurements:
 - GPU 4× RTX Pro 6000 (TP=4): 18 data points (9 QPS sweep + 1 baseline + 8 burst sweep)
-- TPU v6e-8: 16 data points (9 QPS sweep + 7 burst sweep) via vllm bench serve
+- TPU v6e-4: 16 data points (9 QPS sweep + 7 burst sweep) unique random prompts, no prefix caching
 - Vertex AI MaaS: 17 data points (9 QPS sweep + 8 burst sweep) via aiplatform.googleapis.com
 
 Usage:
@@ -73,50 +73,51 @@ gpu_burst = [
 ]
 
 # =============================================================================
-# MEASURED DATA — TPU v6e-8 Trillium (8 chips, 256GB HBM, BF16)
-# vLLM Docker (vllm/vllm-tpu:nightly), TP=8, max-model-len=128000
+# MEASURED DATA — TPU v6e-4 Trillium (4 chips, 125GB HBM, BF16)
+# vLLM Docker (vllm/vllm-tpu:gemma4), TP=4, max-model-len=128000
+# UNIQUE RANDOM prompts per request (no prefix caching)
 # =============================================================================
 
-# QPS sweep: 10 prompts per rate (128K context, prefix caching ON)
+# QPS sweep: 10 fresh unique random prompts per rate (~20K input, 250 output)
 tpu_qps = [
     # (target_qps, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_tpot_ms, mean_itl_ms)
-    (0.10,  61.9,  62.0,  62.9,  6.68,  6.68),
-    (0.15,  61.6,  61.8,  62.3,  6.81,  6.81),
-    (0.20,  61.8,  61.6,  64.1,  6.74,  6.74),
-    (0.25,  61.4,  61.4,  61.9,  6.71,  6.71),
-    (0.30,  61.1,  61.0,  62.0,  6.65,  6.65),
-    (0.40,  61.1,  61.2,  61.8,  6.70,  6.70),
-    (0.50,  60.9,  60.9,  61.3,  6.66,  6.66),
-    (0.70,  60.9,  60.9,  61.8,  6.67,  6.67),
-    (1.00,  60.8,  60.8,  61.1,  6.71,  6.71),
+    (0.10, 706.6, 706.6, 707.5,  7.27,  7.27),
+    (0.15, 706.4, 706.4, 707.3,  7.27,  7.27),
+    (0.20, 706.2, 706.2, 707.5,  7.25,  7.25),
+    (0.25, 706.6, 706.6, 707.1,  7.26,  7.26),
+    (0.30, 706.3, 706.3, 706.8,  7.25,  7.25),
+    (0.40, 705.9, 705.9, 706.7,  7.27,  7.27),
+    (0.50, 712.1, 712.1, 718.2,  8.87,  8.87),
+    (0.70, 714.7, 714.7, 718.7, 10.95, 10.95),
+    (1.00, 725.3, 725.3, 733.0, 16.76, 16.76),
 ]
 
-# Burst sweep: all requests at once (128K context, prefix caching ON)
+# Burst sweep: all requests at once (unique random prompts, no prefix caching)
 tpu_burst = [
     # (N, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_tpot_ms, mean_itl_ms)
-    ( 1,   61.1,   61.1,   61.1,  6.62,  6.62),
-    ( 2,   94.3,   94.3,   99.4,  6.74,  6.74),
-    ( 5,  163.9,  145.7,  194.0,  7.15,  7.15),
-    ( 8,  267.0,  321.9,  327.0,  7.83,  7.83),
-    (10,  325.6,  332.2,  442.3, 10.37, 10.37),
-    (15,  514.2,  573.9,  582.4,  8.81,  8.81),
-    (20,  748.5,  844.1,  855.4,  9.67,  9.67),
+    ( 1,  704.1,  704.1,  704.1,  7.20,  7.20),
+    ( 2, 1066.2, 1066.2, 1319.7,  8.69,  8.69),
+    ( 5, 2015.6, 2015.6, 3013.5, 14.36, 14.36),
+    ( 8, 2920.3, 2920.3, 4693.1, 18.73, 18.73),
+    (10, 3603.3, 3603.3, 5915.2, 22.88, 22.88),
+    (15, 5733.4, 5733.4, 10333.5, 25.15, 25.15),
+    (20, 7830.5, 7830.5, 13431.5, 27.34, 27.34),
 ]
 
-# Single request baseline (10 runs, 128K context, prefix caching ON)
+# Single request baseline (10 runs, unique random prompts, no prefix caching)
 tpu_baseline = {
-    'ttft_ms': 60.2,
-    'tpot_ms': 6.42,
-    'itl_median_ms': 6.42,
-    'output_tok_s': 155.8,
-    'total_tok_s': 155.8,
-    'e2e_p90_s': 0.236,
-    'ttft_p90_ms': 60.5,
+    'ttft_ms': 705.9,
+    'tpot_ms': 7.23,
+    'itl_median_ms': 7.23,
+    'output_tok_s': 138.3,
+    'total_tok_s': 138.3,
+    'e2e_p90_s': 2.523,
+    'ttft_p90_ms': 707.2,
 }
 
-# P90 E2E from 128K benchmark (10 runs per data point)
-tpu_p90_qps = [0.246, 0.247, 0.246, 0.243, 0.243, 0.244, 0.243, 0.242, 0.244]
-tpu_p90_burst = [0.240, 0.272, 0.748, 1.142, 1.155, 1.364, 1.566]
+# P90 E2E from 128K benchmark (10 runs per data point, unique random prompts)
+tpu_p90_qps = [2.525, 2.498, 2.515, 2.526, 2.523, 2.525, 3.148, 3.761, 5.152]
+tpu_p90_burst = [2.496, 3.256, 5.184, 7.363, 8.640, 13.219, 16.735]
 
 # =============================================================================
 # MEASURED DATA — Vertex AI MaaS (Model-as-a-Service, global endpoint)
@@ -168,7 +169,7 @@ GPU_COLOR = '#2ecc71'
 TPU_COLOR = '#3498db'
 MAAS_COLOR = '#9b59b6'
 GPU_LABEL = 'GPU 4×RTX TP=4 (18 pts)'
-TPU_LABEL = 'TPU v6e-8 (16 pts)'
+TPU_LABEL = 'TPU v6e-4 (16 pts)'
 MAAS_LABEL = 'Vertex AI MaaS (17 pts)'
 plt.rcParams.update({'font.size': 11})
 
@@ -197,7 +198,7 @@ def plot_01():
     ax.axhspan(14, 65, color='red', alpha=0.06)
     ax.set_xlabel('Concurrent Requests', fontsize=13)
     ax.set_ylabel('Mean TPOT (ms)', fontsize=13)
-    ax.set_title('Decode Latency vs Concurrency\nGPU 4×RTX (TP=4) vs TPU v6e-8',
+    ax.set_title('Decode Latency vs Concurrency\nGPU 4×RTX (TP=4) vs TPU v6e-4',
                  fontsize=14, fontweight='bold')
     ax.legend(fontsize=9, loc='upper left')
     ax.grid(True, alpha=0.3)
@@ -230,7 +231,7 @@ def plot_02():
                     color=TPU_COLOR, xytext=(8, -12), textcoords='offset points')
     ax.set_xlabel('Concurrent Requests', fontsize=13)
     ax.set_ylabel('Mean TTFT (ms)', fontsize=13)
-    ax.set_title('Prefill Latency vs Concurrency\nGPU 4×RTX (TP=4) vs TPU v6e-8',
+    ax.set_title('Prefill Latency vs Concurrency\nGPU 4×RTX (TP=4) vs TPU v6e-4',
                  fontsize=14, fontweight='bold')
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
@@ -322,7 +323,7 @@ def plot_05():
     ax1.grid(True, alpha=0.3)
     ax2.plot(qps, e2e, 's-', color=GPU_COLOR, linewidth=2.5, markersize=9, label='GPU 4×RTX', zorder=3)
     tpu_e2e_qps = [calc_e2e(d[1], d[4]) / 1000 for d in tpu_qps]
-    ax2.plot(tpu_qps_rates, tpu_e2e_qps, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=9, label='TPU v6e-8', zorder=4)
+    ax2.plot(tpu_qps_rates, tpu_e2e_qps, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=9, label='TPU v6e-4', zorder=4)
     ax2.axhline(y=3.5, color='red', linestyle=':', linewidth=2, label='Target: 3.5s')
     ax2.set_xlabel('Achieved Request Rate (QPS)', fontsize=12)
     ax2.set_ylabel('E2E Latency (seconds)', fontsize=12)
@@ -354,7 +355,7 @@ def plot_06():
     tpu_bar_tpot = [tpu_tpot_map.get(n, 0) for n in burst_ns]
     tpu_valid = [i for i, n in enumerate(burst_ns) if n in tpu_ttft_map]
     ax1.bar([x[i] + width/2 for i in tpu_valid], [tpu_bar_ttft[i] for i in tpu_valid], width,
-            label='TPU v6e-8', color=TPU_COLOR, alpha=0.85, zorder=3)
+            label='TPU v6e-4', color=TPU_COLOR, alpha=0.85, zorder=3)
     ax1.set_ylabel('Mean TTFT (ms)', fontsize=12)
     ax1.set_title('Time to First Token', fontsize=13, fontweight='bold')
     ax1.set_xticks(x)
@@ -363,7 +364,7 @@ def plot_06():
     ax1.grid(True, alpha=0.3, axis='y')
     ax2.bar(x - width/2, gpu_tpot, width, label='GPU 4×RTX', color=GPU_COLOR, alpha=0.85, zorder=3)
     ax2.bar([x[i] + width/2 for i in tpu_valid], [tpu_bar_tpot[i] for i in tpu_valid], width,
-            label='TPU v6e-8', color=TPU_COLOR, alpha=0.85, zorder=3)
+            label='TPU v6e-4', color=TPU_COLOR, alpha=0.85, zorder=3)
     ax2.set_ylabel('Mean TPOT (ms)', fontsize=12)
     ax2.set_title('Time per Output Token', fontsize=13, fontweight='bold')
     ax2.set_xticks(x)
@@ -428,7 +429,7 @@ def plot_09():
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     fig.suptitle('Gemma 4 26B-A4B -- 3-Way Comparison\n(~20k input, 250 output tokens)',
                  fontsize=18, fontweight='bold', color='white', y=0.98)
-    labels = ['GPU 4×RTX\n(TP=4)', 'TPU\nv6e-8', 'MaaS']
+    labels = ['GPU 4×RTX\n(TP=4)', 'TPU\nv6e-4', 'MaaS']
     colors = ['#00ff88', '#ff6b6b', '#bb86fc']
 
     # Panel 1: Single TTFT
@@ -501,23 +502,23 @@ def plot_10():
     })
     fig, ax = plt.subplots(figsize=(16, 9))
     ax.axis('off')
-    col_labels = ['Metric', 'GPU 4×RTX (TP=4)', 'TPU v6e-8 (vLLM)', 'Vertex AI MaaS', 'Winner']
+    col_labels = ['Metric', 'GPU 4×RTX (TP=4)', 'TPU v6e-4 (vLLM)', 'Vertex AI MaaS', 'Winner']
     table_data = [
         ['-- Single Request --', '', '', '', ''],
-        ['Mean TTFT (ms)', f'{gpu_baseline["ttft_ms"]:,.0f}', f'{tpu_baseline["ttft_ms"]:,.0f}', f'{maas_baseline["ttft_mean_ms"]:,.0f}', 'GPU'],
-        ['Mean E2E (s)', f'{gpu_baseline["e2e_s"]:.2f}', f'{calc_e2e(tpu_baseline["ttft_ms"], tpu_baseline["tpot_ms"])/1000:.2f}', f'{maas_baseline["e2e_mean_s"]:.2f}', 'MaaS'],
-        ['P90 E2E (s)', f'{gpu_baseline["e2e_p90_s"]:.2f}', f'{tpu_baseline["e2e_p90_s"]:.2f}', f'{maas_baseline["e2e_p90_s"]:.2f}', 'MaaS'],
+        ['Mean TTFT (ms)', f'{gpu_baseline["ttft_ms"]:,.0f}', f'{tpu_baseline["ttft_ms"]:,.0f}', f'{maas_baseline["ttft_mean_ms"]:,.0f}', 'TPU'],
+        ['Mean E2E (s)', f'{gpu_baseline["e2e_s"]:.2f}', f'{calc_e2e(tpu_baseline["ttft_ms"], tpu_baseline["tpot_ms"])/1000:.2f}', f'{maas_baseline["e2e_mean_s"]:.2f}', 'TPU'],
+        ['P90 E2E (s)', f'{gpu_baseline["e2e_p90_s"]:.2f}', f'{tpu_baseline["e2e_p90_s"]:.2f}', f'{maas_baseline["e2e_p90_s"]:.2f}', 'TPU'],
         ['-- 0.3 QPS Steady --', '', '', '', ''],
         ['Mean TTFT (ms)', f'{gpu_qps[4][3]:,.0f}', f'{tpu_qps[4][1]:,.0f}', f'{maas_qps[4][1]:,.0f}', 'TPU'],
         ['Mean E2E (s)', f'{calc_e2e(gpu_qps[4][3], gpu_qps[4][4])/1000:.2f}', f'{calc_e2e(tpu_qps[4][1], tpu_qps[4][4])/1000:.2f}', f'{maas_qps[4][4]:.2f}', 'TPU'],
         ['P90 E2E (s)', f'{gpu_p90_qps[4]:.2f}', f'{tpu_p90_qps[4]:.2f}', f'{maas_qps[4][7]:.2f}', 'TPU'],
         ['-- Burst 20 --', '', '', '', ''],
-        ['Mean TTFT (ms)', f'{gpu_burst[6][3]:,.0f}', f'{tpu_burst[6][1]:,.0f}', f'{maas_burst[6][1]:,.0f}', 'TPU'],
-        ['Mean E2E (s)', f'{calc_e2e(gpu_burst[6][3], gpu_burst[6][4])/1000:.2f}', f'{calc_e2e(tpu_burst[6][1], tpu_burst[6][4])/1000:.2f}', f'{maas_burst[6][4]:.2f}', 'TPU'],
-        ['P90 E2E (s)', f'{gpu_p90_burst[6]:.2f}', f'{tpu_p90_burst[6]:.2f}', f'{maas_burst[6][7]:.2f}', 'TPU'],
+        ['Mean TTFT (ms)', f'{gpu_burst[6][3]:,.0f}', f'{tpu_burst[6][1]:,.0f}', f'{maas_burst[6][1]:,.0f}', 'MaaS'],
+        ['Mean E2E (s)', f'{calc_e2e(gpu_burst[6][3], gpu_burst[6][4])/1000:.2f}', f'{calc_e2e(tpu_burst[6][1], tpu_burst[6][4])/1000:.2f}', f'{maas_burst[6][4]:.2f}', 'MaaS'],
+        ['P90 E2E (s)', f'{gpu_p90_burst[6]:.2f}', f'{tpu_p90_burst[6]:.2f}', f'{maas_burst[6][7]:.2f}', 'MaaS'],
         ['-- Cost --', '', '', '', ''],
-        ['On-demand ($/hr)', '$18.00', '$21.60', 'Pay-per-token', 'GPU'],
-        ['Cost/M out tokens', '$65.32', '$71.07', '$12.60**', 'MaaS'],
+        ['On-demand ($/hr)', '$18.00', '$10.80', 'Pay-per-token', 'TPU'],
+        ['Cost/M out tokens', '$65.32', '$35.54', '$12.60**', 'MaaS'],
     ]
     cell_colors = []
     for row in table_data:
@@ -615,7 +616,7 @@ if __name__ == '__main__':
     total = len(gpu_qps)+len(gpu_burst)+len(tpu_qps)+len(tpu_burst)+len(maas_qps)+len(maas_burst)
     print(f"\nGenerating 10 benchmark plots...")
     print(f"  GPU 4×RTX TP=4: {len(gpu_qps)} QPS + {len(gpu_burst)} burst = {len(gpu_qps)+len(gpu_burst)} data points")
-    print(f"  TPU v6e-8: {len(tpu_qps)} QPS + {len(tpu_burst)} burst = {len(tpu_qps)+len(tpu_burst)} data points")
+    print(f"  TPU v6e-4: {len(tpu_qps)} QPS + {len(tpu_burst)} burst = {len(tpu_qps)+len(tpu_burst)} data points")
     print(f"  Vertex AI MaaS: {len(maas_qps)} QPS + {len(maas_burst)} burst = {len(maas_qps)+len(maas_burst)} data points")
     print(f"  Total: {total} data points")
     print("=" * 60)

@@ -3,26 +3,69 @@
 TPU v6e-8 Benchmark for Gemma 4 26B-A4B using vLLM + OpenAI API.
 128K context length benchmark (max-model-len=128000).
 Runs single-request baseline, QPS sweep, and burst sweep.
-Outputs structured P90 results matching the existing report format.
+
+IMPORTANT: Each request uses a UNIQUE random prompt (~20K tokens) to prevent
+prefix caching benefits. This matches the GPU benchmark (vllm bench serve
+--dataset-name random) and the customer's low-cache-hit production workload.
 """
 
-import requests, json, time, sys, os
+import requests, json, time, sys, os, random, string
 import concurrent.futures
 import numpy as np
 
 BASE_URL = "http://localhost:8000/v1"
 MODEL = "google/gemma-4-26B-A4B-it"
-LONG_INPUT = "The quick brown fox jumps over the lazy dog. " * 2000  # ~20k tokens
 MAX_TOKENS = 250
+TARGET_INPUT_WORDS = 20000  # ~20K tokens (approx 1 word ≈ 1 token for random text)
+
+# Word list for generating unique random prompts
+WORD_LIST = [
+    "the", "be", "to", "of", "and", "a", "in", "that", "have", "I",
+    "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
+    "this", "but", "his", "by", "from", "they", "we", "say", "her", "she",
+    "or", "an", "will", "my", "one", "all", "would", "there", "their", "what",
+    "so", "up", "out", "if", "about", "who", "get", "which", "go", "me",
+    "when", "make", "can", "like", "time", "no", "just", "him", "know", "take",
+    "people", "into", "year", "your", "good", "some", "could", "them", "see",
+    "other", "than", "then", "now", "look", "only", "come", "its", "over",
+    "think", "also", "back", "after", "use", "two", "how", "our", "work",
+    "first", "well", "way", "even", "new", "want", "because", "any", "these",
+    "give", "day", "most", "us", "great", "between", "need", "large", "often",
+    "system", "data", "model", "process", "each", "should", "important", "high",
+    "different", "number", "found", "state", "world", "example", "while",
+    "point", "small", "end", "group", "public", "part", "long", "during",
+    "last", "right", "same", "another", "school", "might", "still", "every",
+    "water", "house", "change", "city", "area", "under", "around", "place",
+    "where", "through", "before", "must", "home", "big", "hand", "help",
+    "line", "old", "life", "night", "call", "head", "start", "begin",
+    "story", "both", "always", "children", "few", "those", "family",
+    "side", "keep", "never", "fact", "study", "real", "power", "early",
+    "question", "young", "three", "already", "learn", "however", "service",
+    "company", "information", "business", "government", "development",
+    "technology", "research", "market", "management", "community",
+    "performance", "experience", "support", "problem", "analysis",
+    "result", "organization", "production", "international", "industry",
+]
+
+
+def generate_unique_prompt():
+    """Generate a unique random prompt of ~20K tokens.
+    Uses random word selection to ensure no prefix caching benefits."""
+    words = random.choices(WORD_LIST, k=TARGET_INPUT_WORDS)
+    # Add a unique ID to guarantee uniqueness
+    unique_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=16))
+    return f"[REQUEST-{unique_id}] " + " ".join(words)
+
 
 def make_request(stream=True):
-    """Send one chat completion request, measure TTFT and total time."""
+    """Send one chat completion request with a UNIQUE random prompt."""
+    prompt = generate_unique_prompt()
     payload = {
         "model": MODEL,
         "stream": stream,
         "max_tokens": MAX_TOKENS,
         "temperature": 0,
-        "messages": [{"role": "user", "content": LONG_INPUT}]
+        "messages": [{"role": "user", "content": prompt}]
     }
     t_start = time.time()
     try:
@@ -125,12 +168,13 @@ def main():
     output = []
 
     def p(s=""):
-        print(s)
+        print(s, flush=True)
         output.append(s)
 
     p("=" * 70)
-    p("TPU v6e-8 Benchmark - P90 E2E (128K context, BF16)")
-    p(f"Input: ~20000 tokens, Output: {MAX_TOKENS} tokens")
+    p("TPU v6e-4 Benchmark - P90 E2E (128K context, BF16)")
+    p(f"Input: ~{TARGET_INPUT_WORDS} tokens (UNIQUE RANDOM per request), Output: {MAX_TOKENS} tokens")
+    p("NOTE: Each request uses a fresh random prompt to prevent prefix caching")
     p("=" * 70)
 
     # Check server
@@ -142,15 +186,15 @@ def main():
         p(f"\nERROR: Cannot reach vLLM at {BASE_URL}: {e}")
         sys.exit(1)
 
-    # Warmup
-    p("\nWarmup...")
+    # Warmup with a unique prompt (result discarded)
+    p("\nWarmup (unique prompt, result discarded)...")
     r = make_request(stream=False)
     p(f"  status={r['ok']} time={r['total']:.2f}s tokens={r['tokens']}")
 
     all_results = {}
 
     # Phase 1: Single request baseline
-    p("\n>>> PHASE 1: Single Request (10 runs, fresh prompts)")
+    p("\n>>> PHASE 1: Single Request (10 runs, UNIQUE random prompts each)")
     single_results = []
     for i in range(10):
         r = make_request()
@@ -164,7 +208,7 @@ def main():
     all_results['single_10runs'] = single_results
 
     # Phase 2: QPS sweep
-    p("\n>>> PHASE 2: QPS Sweep")
+    p("\n>>> PHASE 2: QPS Sweep (UNIQUE random prompts per request)")
     for qps in [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0]:
         p("")
         results = run_qps(qps)
@@ -172,7 +216,7 @@ def main():
         all_results[f'qps_{qps}'] = results
 
     # Phase 3: Burst sweep
-    p("\n>>> PHASE 3: Burst Sweep")
+    p("\n>>> PHASE 3: Burst Sweep (UNIQUE random prompts per request)")
     for n in [1, 2, 5, 8, 10, 15, 20]:
         p("")
         results = run_burst(n)
