@@ -1,6 +1,6 @@
 # Gemma 4 26B-A4B Inference Benchmark
 
-> **GPU vs TPU vs Vertex AI MaaS** — 4-way performance comparison for serving Gemma 4 26B-A4B-it (68 measured data points)
+> **GPU vs TPU vs Vertex AI MaaS** — 3-way performance comparison for serving Gemma 4 26B-A4B-it (51 measured data points)
 
 ![3-Way Comparison](plots/09_gpu_tpu_vertexai_comparison.png)
 
@@ -10,8 +10,7 @@ This repository benchmarks **Google's Gemma 4 26B-A4B-it** (26B params, MoE with
 
 | Platform | Hardware | Serving Stack | Data Points | Pricing |
 |----------|----------|---------------|-------------|---------|
-| **GPU (1×)** | NVIDIA RTX Pro 6000 (Blackwell), 96GB GDDR7 | vLLM 0.19.0 (FP8) | 17 | $4.50/hr on-demand |
-| **GPU (4× TP=4)** | 4× NVIDIA RTX Pro 6000, 384GB total | vLLM 0.19.0 (FP8, TP=4) | 18 | $18.00/hr on-demand |
+| **GPU** | 4× NVIDIA RTX Pro 6000 (Blackwell), 384GB GDDR7 | vLLM 0.19.0 (FP8, TP=4) | 18 | $18.00/hr on-demand |
 | **TPU** | Cloud TPU v6e-8 (Trillium), 8 chips, 256GB HBM | vLLM (BF16, TP=8) | 16 | $21.60/hr on-demand |
 | **Vertex AI MaaS** | Global endpoint (aiplatform.googleapis.com) | Model-as-a-Service | 17 | $0.15/M in, $0.60/M out |
 
@@ -29,27 +28,27 @@ All values below are **P90 E2E latency** (10 runs per data point) — the metric
 
 ### Single Request (Baseline, 10 cold runs)
 
-| Metric | GPU 1× | GPU 4× TP=4 | TPU v6e-8 | MaaS | Winner |
-|--------|--------|-------------|-----------|------|--------|
-| **Mean TTFT** | 5,731ms | 1,108ms | 1,948ms | **1,330ms** | **MaaS** |
-| **Mean E2E** | 8.16s | 3.31s | 3.67s | **2.94s** | **MaaS** |
-| **P90 E2E** | 8.33s | **3.31s** ✅ | 3.69s | **3.09s** | **MaaS** |
+| Metric | GPU (4×RTX TP=4) | TPU v6e-8 | MaaS | Winner |
+|--------|-------------------|-----------|------|--------|
+| **Mean TTFT** | **1,108ms** | 1,948ms | 1,330ms | **GPU** |
+| **Mean E2E** | 3.31s | 3.67s | **2.94s** | **MaaS** |
+| **P90 E2E** | 3.31s ✅ | 3.69s | **3.09s** | **MaaS** |
 
 ### Under Load (0.3 QPS Steady State)
 
-| Metric | GPU 1× | GPU 4× TP=4 | TPU v6e-8 | MaaS | Winner |
-|--------|--------|-------------|-----------|------|--------|
-| **Mean TTFT** | 1,056ms | 1,106ms | **386ms** | 1,292ms | **TPU** |
-| **Mean E2E** | 3.64s | 4.51s | **2.14s** | 2.91s | **TPU** |
-| **P90 E2E** | 5.90s | 5.04s | **2.13s** | 3.08s | **TPU** |
+| Metric | GPU (4×RTX TP=4) | TPU v6e-8 | MaaS | Winner |
+|--------|-------------------|-----------|------|--------|
+| **Mean TTFT** | 1,106ms | **386ms** | 1,292ms | **TPU** |
+| **Mean E2E** | 4.51s | **2.14s** | 2.91s | **TPU** |
+| **P90 E2E** | 5.04s | **2.13s** | 3.08s | **TPU** |
 
 ### Burst (20 concurrent requests)
 
-| Metric | GPU 1× | GPU 4× TP=4 | TPU v6e-8 | MaaS | Winner |
-|--------|--------|-------------|-----------|------|--------|
-| **Mean TTFT** | 8,601ms | 10,851ms | **2,683ms** | 4,201ms | **TPU** |
-| **Mean E2E** | 11.37s | 21.31s | 7.47s | **7.42s** | **MaaS** |
-| **P90 E2E** | 14.88s | 21.65s | **7.03s** | 8.22s | **TPU** |
+| Metric | GPU (4×RTX TP=4) | TPU v6e-8 | MaaS | Winner |
+|--------|-------------------|-----------|------|--------|
+| **Mean TTFT** | 10,851ms | **2,683ms** | 4,201ms | **TPU** |
+| **Mean E2E** | 21.31s | 7.47s | **7.42s** | **MaaS** |
+| **P90 E2E** | 21.65s | **7.03s** | 8.22s | **TPU** |
 
 > **Fair methodology**: All benchmarks use fresh random prompts per request (no prefix caching bias).  
 > MaaS P90 measured directly; GPU/TPU P90 from per-request E2E distributions (10 runs each).
@@ -60,12 +59,12 @@ All values below are **P90 E2E latency** (10 runs per data point) — the metric
 
 1. **🏆 TPU wins P90 E2E under load**: 2.13s at 0.3 QPS, 7.03s at burst N=20 — best for SLA-sensitive workloads
 2. **MaaS wins single-request P90**: 3.09s — lowest latency for individual requests
-3. **✅ GPU 4× TP=4 meets 3.5s single-request target**: P90 E2E = 3.31s (vs 1×GPU 8.33s — 2.5× faster)
-4. **⚠️ GPU 1× FAILS 3.5s P90 target** in ALL scenarios: 8.33s single, 5.90s at 0.3 QPS, 14.88s burst N=20
-5. **⚠️ GPU 4× TP=4 degrades under load**: P90 E2E 5.04s at 0.3 QPS, 21.65s at burst N=20 (TPOT explodes with max_num_seqs=32)
-6. **TPU meets 3.5s P90 target** at steady-state QPS ≤0.5 (P90 ≈ 2.1-2.2s) but exceeds it under burst
-7. **MaaS stays flat under QPS sweep**: P90 E2E ~3.0-3.1s from 0.1-0.5 QPS (auto-scaling handles steady load)
-8. **TPU wins burst TTFT**: 2.7s at N=20 vs GPU 4× 10.9s vs GPU 1× 8.6s vs MaaS 4.2s
+3. **✅ GPU meets 3.5s single-request target**: P90 E2E = 3.31s with 4×RTX TP=4
+4. **⚠️ GPU degrades under load**: P90 E2E 5.04s at 0.3 QPS, 21.65s at burst N=20 (TPOT explodes at high concurrency)
+5. **TPU meets 3.5s P90 target** at steady-state QPS ≤0.5 (P90 ≈ 2.1-2.2s) but exceeds it under burst
+6. **MaaS stays flat under QPS sweep**: P90 E2E ~3.0-3.1s from 0.1-0.5 QPS (auto-scaling handles steady load)
+7. **TPU wins burst TTFT**: 2.7s at N=20 vs GPU 10.9s vs MaaS 4.2s — 256GB HBM enables fast prefill
+8. **GPU wins single-request TTFT**: 1,108ms vs TPU 1,948ms — TP=4 parallelizes prefill across 4 GPUs
 9. **All P90 E2E values are measured** from real per-request distributions (not estimated from mean TTFT+TPOT)
 
 ---
@@ -77,9 +76,9 @@ All values below are **P90 E2E latency** (10 runs per data point) — the metric
 | Plot | Description |
 |------|-------------|
 | ![TPOT](plots/01_tpot_vs_concurrency.png) | Decode latency degrades with concurrency |
-| ![TTFT](plots/02_ttft_vs_concurrency.png) | Prefill queuing explodes beyond max_num_seqs |
+| ![TTFT](plots/02_ttft_vs_concurrency.png) | Prefill latency vs concurrency |
 | ![E2E](plots/03_e2e_vs_concurrency.png) | End-to-end latency vs concurrency |
-| ![Throughput](plots/04_throughput_vs_concurrency.png) | Throughput peaks at max_num_seqs=8 |
+| ![Throughput](plots/04_throughput_vs_concurrency.png) | Throughput vs concurrency |
 | ![QPS Sweep](plots/05_qps_sweep_latency.png) | Steady-state latency across 9 QPS levels |
 | ![Breakdown](plots/06_latency_breakdown.png) | TTFT vs TPOT breakdown by concurrency |
 | ![E2E Stack](plots/08_e2e_breakdown.png) | E2E breakdown: prefill + decode |
@@ -108,13 +107,14 @@ All values below are **P90 E2E latency** (10 runs per data point) — the metric
 - Python 3.10+, `vllm >= 0.19.0`
 - HuggingFace access to `google/gemma-4-26B-A4B-it`
 
-### GPU (RTX Pro 6000)
+### GPU (4× RTX Pro 6000, TP=4)
 
 ```bash
-# Step 1: Create GPU VM (adjust machine type for your project/quota)
+# Step 1: Create GPU VM
 gcloud compute instances create gemma4-gpu-bench \
     --zone=us-central1-a \
-    --accelerator=type=nvidia-rtx-pro-6000,count=1 \
+    --machine-type=g4-standard-192 \
+    --accelerator=type=nvidia-rtx-pro-6000,count=4 \
     --boot-disk-size=200GB \
     --image-family=pytorch-latest-gpu \
     --image-project=deeplearning-platform-release \
@@ -124,12 +124,13 @@ gcloud compute instances create gemma4-gpu-bench \
 gcloud compute ssh gemma4-gpu-bench --zone=us-central1-a
 pip install vllm==0.19.0
 
-# Step 3: Start vLLM server (see configs/vllm-gpu.yaml for full configuration)
+# Step 3: Start vLLM server (see configs/vllm-gpu.yaml)
 vllm serve google/gemma-4-26B-A4B-it \
     --dtype bfloat16 --quantization fp8 \
     --gpu-memory-utilization 0.95 --max-model-len 128000 \
-    --max-num-batched-tokens 65536 --max-num-seqs 8 \
-    --enable-chunked-prefill --enable-prefix-caching
+    --max-num-batched-tokens 65536 --max-num-seqs 32 \
+    --enable-chunked-prefill --enable-prefix-caching \
+    --tensor-parallel-size 4 --trust-remote-code
 
 # Benchmark: single request
 vllm bench serve --dataset-name random \
@@ -171,9 +172,8 @@ docker run -d --name vllm-gemma4 --privileged --net=host \
         --disable_chunked_mm_input" \
     vllm/vllm-tpu:gemma4
 
-# Step 4: Run benchmarks (same commands as GPU, or use the custom script)
+# Step 4: Run benchmarks
 python3 scripts/tpu-benchmark.py
-# Or use vllm bench serve (same commands as GPU)
 ```
 
 ### Vertex AI MaaS (Model-as-a-Service)
@@ -191,18 +191,18 @@ python3 scripts/maas-benchmark.py
 ├── README.md                          # This file
 ├── BENCHMARK_REPORT.md                # Detailed report with all raw data
 ├── configs/
-│   ├── vllm-gpu.yaml                 # GPU 1× vLLM configuration
-│   ├── vllm-gpu-tp4.yaml             # GPU 4× TP=4 vLLM configuration
+│   ├── vllm-gpu.yaml                 # GPU 4×RTX TP=4 vLLM configuration
 │   └── vllm-tpu.yaml                 # TPU vLLM configuration  
 ├── data/
-│   ├── gpu-benchmark-results.txt     # Raw GPU 1× benchmark output
-│   ├── gpu-tp4-benchmark-results.txt # Raw GPU 4× TP=4 benchmark output
-│   ├── gpu-tp4-p90-results.json      # GPU 4× TP=4 P90 data (JSON)
+│   ├── gpu-benchmark-results.txt     # Raw GPU benchmark output
+│   ├── gpu-p90-results.json          # GPU P90 data (JSON)
 │   ├── maas-benchmark-results.txt    # Raw MaaS benchmark output
-│   └── tpu-benchmark-results.txt     # Raw TPU v6e-8 benchmark output
+│   ├── maas-p90-results.json         # MaaS P90 data (JSON)
+│   ├── tpu-benchmark-results.txt     # Raw TPU benchmark output
+│   └── tpu-p90-results.json          # TPU P90 data (JSON)
 ├── scripts/
-│   ├── generate-plots.py             # Generate all 10 plots (67 data points)
-│   ├── gpu-benchmark-tp4.py          # GPU 4× TP=4 benchmark script
+│   ├── generate-plots.py             # Generate all 10 plots (51 data points)
+│   ├── gpu-benchmark.py              # GPU benchmark script
 │   ├── maas-benchmark.py             # Vertex AI MaaS benchmark
 │   ├── tpu-benchmark.py              # TPU vLLM benchmark
 │   └── run-benchmarks.sh             # Automated benchmark runner

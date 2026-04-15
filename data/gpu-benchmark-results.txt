@@ -1,337 +1,639 @@
-================================================================================
-GPU Benchmark Results — NVIDIA RTX Pro 6000 (Blackwell)
-vLLM v0.19.0, FP8 quantization, prefix caching ON
-Model: google/gemma-4-26B-A4B-it
-Workload: ~20,000 random input tokens → 250 output tokens
-================================================================================
+============================================================
+GPU 4x RTX Pro 6000 (TP=4) Benchmark
+============================================================
 
---- vLLM Server Configuration ---
-vllm serve google/gemma-4-26B-A4B-it \
-    --host 0.0.0.0 --port 8000 \
-    --dtype bfloat16 --quantization fp8 \
-    --gpu-memory-utilization 0.95 \
-    --max-model-len 128000 \
-    --max-num-batched-tokens 65536 \
-    --max-num-seqs 8 \
-    --enable-chunked-prefill \
-    --enable-prefix-caching
+===== SINGLE REQUEST BASELINE (10 runs) =====
 
---- GPU Info ---
-GPU: NVIDIA RTX PRO 6000 Blackwell Server Edition
-VRAM: 97.9 GiB (marketed as 96 GB GDDR7)
-Compute Capability: 12.0 (sm_120)
-CUDA: 13.0 / Driver: 580.126.09
+  Running: single run 1/10 (seed=1000, n=1, rate=inf)
+    Output length: 4190 chars
 
---- vLLM Memory Profiler ---
-Model weights: 25.67 GiB
-KV cache: 53.86 GiB (235,296 tokens)
-GPU utilization: 91.4% (89.4 / 97.9 GiB)
+  Running: single run 2/10 (seed=1100, n=1, rate=inf)
+    Output length: 4190 chars
 
-================================================================================
-SINGLE REQUEST BASELINE
-vllm bench serve --dataset-name random --random-input-len 20000 --random-output-len 250 --num-prompts 1 --request-rate inf
-================================================================================
+  Running: single run 3/10 (seed=1200, n=1, rate=inf)
+    Output length: 4190 chars
 
-============ Serving Benchmark Result ============
-Successful requests:                     1
-Benchmark duration (s):                  3.32
-Total input tokens:                      20000
-Total generated tokens:                  250
-Request throughput (req/s):              0.30
-Output token throughput (tok/s):         75.40
-Total Token throughput (tok/s):          6097.40
----------------Time to First Token----------------
-Mean TTFT (ms):                          1009.00
-Median TTFT (ms):                        1009.00
-P99 TTFT (ms):                           1009.00
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          9.27
-Median TPOT (ms):                        9.27
-P99 TPOT (ms):                           9.27
----------------Inter-token Latency-----------------
-Mean ITL (ms):                           9.37
-Median ITL (ms):                         9.37
-P99 ITL (ms):                            9.37
-==================================================
+  Running: single run 4/10 (seed=1300, n=1, rate=inf)
+    Output length: 4328 chars
 
-================================================================================
-QPS SWEEP (10 prompts per rate, seed=42)
-vllm bench serve --dataset-name random --random-input-len 20000 --random-output-len 250 --num-prompts 10 --request-rate $QPS --seed 42
-================================================================================
+  Running: single run 5/10 (seed=1400, n=1, rate=inf)
+    Output length: 4190 chars
 
---- QPS = 0.10 ---
-============ Serving Benchmark Result ============
-Successful requests:                     10
-Request throughput (req/s):              0.10
-Output token throughput (tok/s):         24.41
----------------Time to First Token----------------
-Mean TTFT (ms):                          120.49
-Median TTFT (ms):                        105.20
-P99 TTFT (ms):                           148.30
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          10.20
-Median TPOT (ms):                        10.15
-P99 TPOT (ms):                           10.89
-Peak concurrency:                        3
-==================================================
+  Running: single run 6/10 (seed=1500, n=1, rate=inf)
+    Output length: 4190 chars
 
---- QPS = 0.15 ---
-============ Serving Benchmark Result ============
-Successful requests:                     10
-Request throughput (req/s):              0.14
-Output token throughput (tok/s):         36.19
----------------Time to First Token----------------
-Mean TTFT (ms):                          91.38
-Median TTFT (ms):                        89.70
-P99 TTFT (ms):                           98.40
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          10.27
-Median TPOT (ms):                        10.22
-P99 TPOT (ms):                           10.95
-Peak concurrency:                        4
-==================================================
+  Running: single run 7/10 (seed=1600, n=1, rate=inf)
+    Output length: 4328 chars
 
---- QPS = 0.20 ---
-============ Serving Benchmark Result ============
-Successful requests:                     10
-Request throughput (req/s):              0.19
-Output token throughput (tok/s):         47.69
----------------Time to First Token----------------
-Mean TTFT (ms):                          89.61
-Median TTFT (ms):                        88.40
-P99 TTFT (ms):                           95.80
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          10.41
-Median TPOT (ms):                        10.38
-P99 TPOT (ms):                           11.05
-Peak concurrency:                        4
-==================================================
+  Running: single run 8/10 (seed=1700, n=1, rate=inf)
+    Output length: 4328 chars
 
---- QPS = 0.25 ---
-============ Serving Benchmark Result ============
-Successful requests:                     10
-Request throughput (req/s):              0.24
-Output token throughput (tok/s):         58.96
----------------Time to First Token----------------
-Mean TTFT (ms):                          88.79
-Median TTFT (ms):                        87.90
-P99 TTFT (ms):                           94.60
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          10.34
-Median TPOT (ms):                        10.30
-P99 TPOT (ms):                           10.98
-Peak concurrency:                        4
-==================================================
+  Running: single run 9/10 (seed=1800, n=1, rate=inf)
+    Output length: 4190 chars
 
---- QPS = 0.30 ---
-============ Serving Benchmark Result ============
-Successful requests:                     10
-Request throughput (req/s):              0.28
-Output token throughput (tok/s):         69.98
----------------Time to First Token----------------
-Mean TTFT (ms):                          88.39
-Median TTFT (ms):                        87.50
-P99 TTFT (ms):                           94.20
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          10.46
-Median TPOT (ms):                        10.42
-P99 TPOT (ms):                           11.10
-Peak concurrency:                        4
-==================================================
+  Running: single run 10/10 (seed=1900, n=1, rate=inf)
+    Output length: 4328 chars
+  E2E: mean=3.306s  P90=3.313s
+  TTFT: mean=1108.3ms
 
---- QPS = 0.40 ---
-============ Serving Benchmark Result ============
-Successful requests:                     10
-Request throughput (req/s):              0.37
-Output token throughput (tok/s):         91.29
----------------Time to First Token----------------
-Mean TTFT (ms):                          90.70
-Median TTFT (ms):                        89.80
-P99 TTFT (ms):                           96.50
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          10.50
-Median TPOT (ms):                        10.46
-P99 TPOT (ms):                           11.15
-Peak concurrency:                        4
-==================================================
+===== QPS=0.1 =====
 
---- QPS = 0.50 ---
-============ Serving Benchmark Result ============
-Successful requests:                     10
-Request throughput (req/s):              0.45
-Output token throughput (tok/s):         111.71
----------------Time to First Token----------------
-Mean TTFT (ms):                          91.79
-Median TTFT (ms):                        90.90
-P99 TTFT (ms):                           97.60
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          10.62
-Median TPOT (ms):                        10.58
-P99 TPOT (ms):                           11.28
-Peak concurrency:                        5
-==================================================
+  Running: qps_0.1 run 1/10 (seed=1000, n=10, rate=0.1)
+    Output length: 4762 chars
 
---- QPS = 0.70 ---
-============ Serving Benchmark Result ============
-Successful requests:                     10
-Request throughput (req/s):              0.60
-Output token throughput (tok/s):         148.77
----------------Time to First Token----------------
-Mean TTFT (ms):                          93.95
-Median TTFT (ms):                        93.10
-P99 TTFT (ms):                           99.80
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          11.16
-Median TPOT (ms):                        11.12
-P99 TPOT (ms):                           11.85
-Peak concurrency:                        5
-==================================================
+  Running: qps_0.1 run 2/10 (seed=1100, n=10, rate=0.1)
+    Output length: 4809 chars
 
---- QPS = 1.00 ---
-============ Serving Benchmark Result ============
-Successful requests:                     10
-Request throughput (req/s):              0.78
-Output token throughput (tok/s):         195.87
----------------Time to First Token----------------
-Mean TTFT (ms):                          95.09
-Median TTFT (ms):                        94.20
-P99 TTFT (ms):                           101.00
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          12.17
-Median TPOT (ms):                        12.13
-P99 TPOT (ms):                           12.90
-Peak concurrency:                        6
-==================================================
+  Running: qps_0.1 run 3/10 (seed=1200, n=10, rate=0.1)
+    Output length: 4762 chars
 
-================================================================================
-BURST SWEEP (all requests at once, seed=42)
-vllm bench serve --dataset-name random --random-input-len 20000 --random-output-len 250 --num-prompts $N --request-rate inf --seed 42
-================================================================================
+  Running: qps_0.1 run 4/10 (seed=1300, n=10, rate=0.1)
+    Output length: 4809 chars
 
---- N = 1 ---
-============ Serving Benchmark Result ============
-Successful requests:                     1
-Request throughput (req/s):              0.42
-Output token throughput (tok/s):         105.44
----------------Time to First Token----------------
-Mean TTFT (ms):                          85.88
-Median TTFT (ms):                        85.88
-P99 TTFT (ms):                           85.88
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          9.18
-Median TPOT (ms):                        9.18
-P99 TPOT (ms):                           9.18
-Peak concurrency:                        1
-==================================================
+  Running: qps_0.1 run 5/10 (seed=1400, n=10, rate=0.1)
+    Output length: 4809 chars
 
---- N = 2 ---
-============ Serving Benchmark Result ============
-Successful requests:                     2
-Request throughput (req/s):              0.71
-Output token throughput (tok/s):         177.08
----------------Time to First Token----------------
-Mean TTFT (ms):                          141.23
-Median TTFT (ms):                        141.23
-P99 TTFT (ms):                           148.50
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          10.77
-Median TPOT (ms):                        10.77
-P99 TPOT (ms):                           11.20
-Peak concurrency:                        2
-==================================================
+  Running: qps_0.1 run 6/10 (seed=1500, n=10, rate=0.1)
+    Output length: 4671 chars
 
---- N = 5 ---
-============ Serving Benchmark Result ============
-Successful requests:                     5
-Request throughput (req/s):              1.31
-Output token throughput (tok/s):         326.36
----------------Time to First Token----------------
-Mean TTFT (ms):                          540.11
-Median TTFT (ms):                        520.30
-P99 TTFT (ms):                           610.40
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          13.04
-Median TPOT (ms):                        13.00
-P99 TPOT (ms):                           13.80
-Peak concurrency:                        5
-==================================================
+  Running: qps_0.1 run 7/10 (seed=1600, n=10, rate=0.1)
+    Output length: 4809 chars
 
---- N = 8 ---
-============ Serving Benchmark Result ============
-Successful requests:                     8
-Request throughput (req/s):              2.08
-Output token throughput (tok/s):         519.19
----------------Time to First Token----------------
-Mean TTFT (ms):                          408.89
-Median TTFT (ms):                        395.50
-P99 TTFT (ms):                           480.20
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          13.62
-Median TPOT (ms):                        13.58
-P99 TPOT (ms):                           14.40
-Peak concurrency:                        8
-==================================================
+  Running: qps_0.1 run 8/10 (seed=1700, n=10, rate=0.1)
+    Output length: 4762 chars
 
---- N = 10 ---
-============ Serving Benchmark Result ============
-Successful requests:                     10
-Request throughput (req/s):              1.49
-Output token throughput (tok/s):         373.44
----------------Time to First Token----------------
-Mean TTFT (ms):                          1139.07
-Median TTFT (ms):                        1050.80
-P99 TTFT (ms):                           1380.50
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          13.38
-Median TPOT (ms):                        13.34
-P99 TPOT (ms):                           14.15
-Peak concurrency:                        10
-==================================================
+  Running: qps_0.1 run 9/10 (seed=1800, n=10, rate=0.1)
+    Output length: 4624 chars
 
---- N = 15 ---
-============ Serving Benchmark Result ============
-Successful requests:                     15
-Request throughput (req/s):              1.18
-Output token throughput (tok/s):         295.63
----------------Time to First Token----------------
-Mean TTFT (ms):                          4082.96
-Median TTFT (ms):                        3850.20
-P99 TTFT (ms):                           5100.30
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          17.32
-Median TPOT (ms):                        17.28
-P99 TPOT (ms):                           18.40
-Peak concurrency:                        15
-==================================================
+  Running: qps_0.1 run 10/10 (seed=1900, n=10, rate=0.1)
+    Output length: 4762 chars
+  E2E: mean=3.431s  P90=3.791s
+  TTFT: mean=967.1ms
 
---- N = 20 ---
-============ Serving Benchmark Result ============
-Successful requests:                     20
-Request throughput (req/s):              1.30
-Output token throughput (tok/s):         323.92
----------------Time to First Token----------------
-Mean TTFT (ms):                          4650.76
-Median TTFT (ms):                        4400.30
-P99 TTFT (ms):                           5850.50
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          15.23
-Median TPOT (ms):                        15.19
-P99 TPOT (ms):                           16.10
-Peak concurrency:                        20
-==================================================
+===== QPS=0.15 =====
 
---- N = 30 ---
-============ Serving Benchmark Result ============
-Successful requests:                     30
-Request throughput (req/s):              1.23
-Output token throughput (tok/s):         307.95
----------------Time to First Token----------------
-Mean TTFT (ms):                          8879.47
-Median TTFT (ms):                        8500.60
-P99 TTFT (ms):                           11200.80
------Time per Output Token (Excluding 1st)---------
-Mean TPOT (ms):                          16.03
-Median TPOT (ms):                        15.99
-P99 TPOT (ms):                           17.00
-Peak concurrency:                        30
-==================================================
+  Running: qps_0.15 run 1/10 (seed=1000, n=10, rate=0.15)
+    Output length: 4717 chars
+
+  Running: qps_0.15 run 2/10 (seed=1100, n=10, rate=0.15)
+    Output length: 4673 chars
+
+  Running: qps_0.15 run 3/10 (seed=1200, n=10, rate=0.15)
+    Output length: 4579 chars
+
+  Running: qps_0.15 run 4/10 (seed=1300, n=10, rate=0.15)
+    Output length: 4673 chars
+
+  Running: qps_0.15 run 5/10 (seed=1400, n=10, rate=0.15)
+    Output length: 4673 chars
+
+  Running: qps_0.15 run 6/10 (seed=1500, n=10, rate=0.15)
+    Output length: 4717 chars
+
+  Running: qps_0.15 run 7/10 (seed=1600, n=10, rate=0.15)
+    Output length: 4811 chars
+
+  Running: qps_0.15 run 8/10 (seed=1700, n=10, rate=0.15)
+    Output length: 4764 chars
+
+  Running: qps_0.15 run 9/10 (seed=1800, n=10, rate=0.15)
+    Output length: 4764 chars
+
+  Running: qps_0.15 run 10/10 (seed=1900, n=10, rate=0.15)
+    Output length: 4717 chars
+  E2E: mean=3.682s  P90=4.112s
+  TTFT: mean=1032.7ms
+
+===== QPS=0.2 =====
+
+  Running: qps_0.2 run 1/10 (seed=1000, n=10, rate=0.2)
+    Output length: 4715 chars
+
+  Running: qps_0.2 run 2/10 (seed=1100, n=10, rate=0.2)
+    Output length: 4671 chars
+
+  Running: qps_0.2 run 3/10 (seed=1200, n=10, rate=0.2)
+    Output length: 4668 chars
+
+  Running: qps_0.2 run 4/10 (seed=1300, n=10, rate=0.2)
+    Output length: 4671 chars
+
+  Running: qps_0.2 run 5/10 (seed=1400, n=10, rate=0.2)
+    Output length: 4624 chars
+
+  Running: qps_0.2 run 6/10 (seed=1500, n=10, rate=0.2)
+    Output length: 4715 chars
+
+  Running: qps_0.2 run 7/10 (seed=1600, n=10, rate=0.2)
+    Output length: 4624 chars
+
+  Running: qps_0.2 run 8/10 (seed=1700, n=10, rate=0.2)
+    Output length: 4762 chars
+
+  Running: qps_0.2 run 9/10 (seed=1800, n=10, rate=0.2)
+    Output length: 4668 chars
+
+  Running: qps_0.2 run 10/10 (seed=1900, n=10, rate=0.2)
+    Output length: 4715 chars
+  E2E: mean=3.983s  P90=4.541s
+  TTFT: mean=1046.8ms
+
+===== QPS=0.25 =====
+
+  Running: qps_0.25 run 1/10 (seed=1000, n=10, rate=0.25)
+    Output length: 4532 chars
+
+  Running: qps_0.25 run 2/10 (seed=1100, n=10, rate=0.25)
+    Output length: 4764 chars
+
+  Running: qps_0.25 run 3/10 (seed=1200, n=10, rate=0.25)
+    Output length: 4623 chars
+
+  Running: qps_0.25 run 4/10 (seed=1300, n=10, rate=0.25)
+    Output length: 4811 chars
+
+  Running: qps_0.25 run 5/10 (seed=1400, n=10, rate=0.25)
+    Output length: 4764 chars
+
+  Running: qps_0.25 run 6/10 (seed=1500, n=10, rate=0.25)
+    Output length: 4717 chars
+
+  Running: qps_0.25 run 7/10 (seed=1600, n=10, rate=0.25)
+    Output length: 4626 chars
+
+  Running: qps_0.25 run 8/10 (seed=1700, n=10, rate=0.25)
+    Output length: 4626 chars
+
+  Running: qps_0.25 run 9/10 (seed=1800, n=10, rate=0.25)
+    Output length: 4532 chars
+
+  Running: qps_0.25 run 10/10 (seed=1900, n=10, rate=0.25)
+    Output length: 4717 chars
+  E2E: mean=4.216s  P90=4.668s
+  TTFT: mean=1067.3ms
+
+===== QPS=0.3 =====
+
+  Running: qps_0.3 run 1/10 (seed=1000, n=10, rate=0.3)
+    Output length: 4574 chars
+
+  Running: qps_0.3 run 2/10 (seed=1100, n=10, rate=0.3)
+    Output length: 4624 chars
+
+  Running: qps_0.3 run 3/10 (seed=1200, n=10, rate=0.3)
+    Output length: 4436 chars
+
+  Running: qps_0.3 run 4/10 (seed=1300, n=10, rate=0.3)
+    Output length: 4762 chars
+
+  Running: qps_0.3 run 5/10 (seed=1400, n=10, rate=0.3)
+    Output length: 4624 chars
+
+  Running: qps_0.3 run 6/10 (seed=1500, n=10, rate=0.3)
+    Output length: 4577 chars
+
+  Running: qps_0.3 run 7/10 (seed=1600, n=10, rate=0.3)
+    Output length: 4624 chars
+
+  Running: qps_0.3 run 8/10 (seed=1700, n=10, rate=0.3)
+    Output length: 4577 chars
+
+  Running: qps_0.3 run 9/10 (seed=1800, n=10, rate=0.3)
+    Output length: 4530 chars
+
+  Running: qps_0.3 run 10/10 (seed=1900, n=10, rate=0.3)
+    Output length: 4714 chars
+  E2E: mean=4.506s  P90=5.035s
+  TTFT: mean=1105.8ms
+
+===== QPS=0.4 =====
+
+  Running: qps_0.4 run 1/10 (seed=1000, n=10, rate=0.4)
+    Output length: 4436 chars
+
+  Running: qps_0.4 run 2/10 (seed=1100, n=10, rate=0.4)
+    Output length: 4624 chars
+
+  Running: qps_0.4 run 3/10 (seed=1200, n=10, rate=0.4)
+    Output length: 4574 chars
+
+  Running: qps_0.4 run 4/10 (seed=1300, n=10, rate=0.4)
+    Output length: 4624 chars
+
+  Running: qps_0.4 run 5/10 (seed=1400, n=10, rate=0.4)
+    Output length: 4715 chars
+
+  Running: qps_0.4 run 6/10 (seed=1500, n=10, rate=0.4)
+    Output length: 4530 chars
+
+  Running: qps_0.4 run 7/10 (seed=1600, n=10, rate=0.4)
+    Output length: 4762 chars
+
+  Running: qps_0.4 run 8/10 (seed=1700, n=10, rate=0.4)
+    Output length: 4577 chars
+
+  Running: qps_0.4 run 9/10 (seed=1800, n=10, rate=0.4)
+    Output length: 4436 chars
+
+  Running: qps_0.4 run 10/10 (seed=1900, n=10, rate=0.4)
+    Output length: 4667 chars
+  E2E: mean=4.913s  P90=5.451s
+  TTFT: mean=1209.5ms
+
+===== QPS=0.5 =====
+
+  Running: qps_0.5 run 1/10 (seed=1000, n=10, rate=0.5)
+    Output length: 4574 chars
+
+  Running: qps_0.5 run 2/10 (seed=1100, n=10, rate=0.5)
+    Output length: 4715 chars
+
+  Running: qps_0.5 run 3/10 (seed=1200, n=10, rate=0.5)
+    Output length: 4574 chars
+
+  Running: qps_0.5 run 4/10 (seed=1300, n=10, rate=0.5)
+    Output length: 4762 chars
+
+  Running: qps_0.5 run 5/10 (seed=1400, n=10, rate=0.5)
+    Output length: 4577 chars
+
+  Running: qps_0.5 run 6/10 (seed=1500, n=10, rate=0.5)
+    Output length: 4483 chars
+
+  Running: qps_0.5 run 7/10 (seed=1600, n=10, rate=0.5)
+    Output length: 4483 chars
+
+  Running: qps_0.5 run 8/10 (seed=1700, n=10, rate=0.5)
+    Output length: 4621 chars
+
+  Running: qps_0.5 run 9/10 (seed=1800, n=10, rate=0.5)
+    Output length: 4574 chars
+
+  Running: qps_0.5 run 10/10 (seed=1900, n=10, rate=0.5)
+    Output length: 4621 chars
+  E2E: mean=5.743s  P90=6.444s
+  TTFT: mean=1339.8ms
+
+===== QPS=0.7 =====
+
+  Running: qps_0.7 run 1/10 (seed=1000, n=10, rate=0.7)
+    Output length: 4479 chars
+
+  Running: qps_0.7 run 2/10 (seed=1100, n=10, rate=0.7)
+    Output length: 4621 chars
+
+  Running: qps_0.7 run 3/10 (seed=1200, n=10, rate=0.7)
+    Output length: 4574 chars
+
+  Running: qps_0.7 run 4/10 (seed=1300, n=10, rate=0.7)
+    Output length: 4668 chars
+
+  Running: qps_0.7 run 5/10 (seed=1400, n=10, rate=0.7)
+    Output length: 4526 chars
+
+  Running: qps_0.7 run 6/10 (seed=1500, n=10, rate=0.7)
+    Output length: 4479 chars
+
+  Running: qps_0.7 run 7/10 (seed=1600, n=10, rate=0.7)
+    Output length: 4479 chars
+
+  Running: qps_0.7 run 8/10 (seed=1700, n=10, rate=0.7)
+    Output length: 4527 chars
+
+  Running: qps_0.7 run 9/10 (seed=1800, n=10, rate=0.7)
+    Output length: 4574 chars
+
+  Running: qps_0.7 run 10/10 (seed=1900, n=10, rate=0.7)
+    Output length: 4526 chars
+  E2E: mean=6.714s  P90=7.669s
+  TTFT: mean=1564.6ms
+
+===== QPS=1.0 =====
+
+  Running: qps_1.0 run 1/10 (seed=1000, n=10, rate=1.0)
+    Output length: 4341 chars
+
+  Running: qps_1.0 run 2/10 (seed=1100, n=10, rate=1.0)
+    Output length: 4527 chars
+
+  Running: qps_1.0 run 3/10 (seed=1200, n=10, rate=1.0)
+    Output length: 4341 chars
+
+  Running: qps_1.0 run 4/10 (seed=1300, n=10, rate=1.0)
+    Output length: 4341 chars
+
+  Running: qps_1.0 run 5/10 (seed=1400, n=10, rate=1.0)
+    Output length: 4294 chars
+
+  Running: qps_1.0 run 6/10 (seed=1500, n=10, rate=1.0)
+    Output length: 4432 chars
+
+  Running: qps_1.0 run 7/10 (seed=1600, n=10, rate=1.0)
+    Output length: 4294 chars
+
+  Running: qps_1.0 run 8/10 (seed=1700, n=10, rate=1.0)
+    Output length: 4294 chars
+
+  Running: qps_1.0 run 9/10 (seed=1800, n=10, rate=1.0)
+    Output length: 4341 chars
+
+  Running: qps_1.0 run 10/10 (seed=1900, n=10, rate=1.0)
+    Output length: 4341 chars
+  E2E: mean=8.327s  P90=8.787s
+  TTFT: mean=2067.3ms
+
+===== BURST N=1 =====
+
+  Running: burst_1 run 1/10 (seed=1000, n=1, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_1 run 2/10 (seed=1100, n=1, rate=inf)
+    Output length: 4190 chars
+
+  Running: burst_1 run 3/10 (seed=1200, n=1, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_1 run 4/10 (seed=1300, n=1, rate=inf)
+    Output length: 4190 chars
+
+  Running: burst_1 run 5/10 (seed=1400, n=1, rate=inf)
+    Output length: 4190 chars
+
+  Running: burst_1 run 6/10 (seed=1500, n=1, rate=inf)
+    Output length: 4190 chars
+
+  Running: burst_1 run 7/10 (seed=1600, n=1, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_1 run 8/10 (seed=1700, n=1, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_1 run 9/10 (seed=1800, n=1, rate=inf)
+    Output length: 4190 chars
+
+  Running: burst_1 run 10/10 (seed=1900, n=1, rate=inf)
+    Output length: 4328 chars
+  E2E: mean=2.699s  P90=3.158s
+  TTFT: mean=535.7ms
+
+===== BURST N=2 =====
+
+  Running: burst_2 run 1/10 (seed=1000, n=2, rate=inf)
+    Output length: 4190 chars
+
+  Running: burst_2 run 2/10 (seed=1100, n=2, rate=inf)
+    Output length: 4190 chars
+
+  Running: burst_2 run 3/10 (seed=1200, n=2, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_2 run 4/10 (seed=1300, n=2, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_2 run 5/10 (seed=1400, n=2, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_2 run 6/10 (seed=1500, n=2, rate=inf)
+    Output length: 4190 chars
+
+  Running: burst_2 run 7/10 (seed=1600, n=2, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_2 run 8/10 (seed=1700, n=2, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_2 run 9/10 (seed=1800, n=2, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_2 run 10/10 (seed=1900, n=2, rate=inf)
+    Output length: 4328 chars
+  E2E: mean=3.016s  P90=3.480s
+  TTFT: mean=592.3ms
+
+===== BURST N=5 =====
+
+  Running: burst_5 run 1/10 (seed=1000, n=5, rate=inf)
+    Output length: 4236 chars
+
+  Running: burst_5 run 2/10 (seed=1100, n=5, rate=inf)
+    Output length: 4190 chars
+
+  Running: burst_5 run 3/10 (seed=1200, n=5, rate=inf)
+    Output length: 4374 chars
+
+  Running: burst_5 run 4/10 (seed=1300, n=5, rate=inf)
+    Output length: 4374 chars
+
+  Running: burst_5 run 5/10 (seed=1400, n=5, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_5 run 6/10 (seed=1500, n=5, rate=inf)
+    Output length: 4328 chars
+
+  Running: burst_5 run 7/10 (seed=1600, n=5, rate=inf)
+    Output length: 4374 chars
+
+  Running: burst_5 run 8/10 (seed=1700, n=5, rate=inf)
+    Output length: 4236 chars
+
+  Running: burst_5 run 9/10 (seed=1800, n=5, rate=inf)
+    Output length: 4236 chars
+
+  Running: burst_5 run 10/10 (seed=1900, n=5, rate=inf)
+    Output length: 4236 chars
+  E2E: mean=4.762s  P90=5.568s
+  TTFT: mean=1797.3ms
+
+===== BURST N=8 =====
+
+  Running: burst_8 run 1/10 (seed=1000, n=8, rate=inf)
+    Output length: 4374 chars
+
+  Running: burst_8 run 2/10 (seed=1100, n=8, rate=inf)
+    Output length: 4374 chars
+
+  Running: burst_8 run 3/10 (seed=1200, n=8, rate=inf)
+    Output length: 4374 chars
+
+  Running: burst_8 run 4/10 (seed=1300, n=8, rate=inf)
+    Output length: 4236 chars
+
+  Running: burst_8 run 5/10 (seed=1400, n=8, rate=inf)
+    Output length: 4374 chars
+
+  Running: burst_8 run 6/10 (seed=1500, n=8, rate=inf)
+    Output length: 4374 chars
+
+  Running: burst_8 run 7/10 (seed=1600, n=8, rate=inf)
+    Output length: 4374 chars
+
+  Running: burst_8 run 8/10 (seed=1700, n=8, rate=inf)
+    Output length: 4374 chars
+
+  Running: burst_8 run 9/10 (seed=1800, n=8, rate=inf)
+    Output length: 4236 chars
+
+  Running: burst_8 run 10/10 (seed=1900, n=8, rate=inf)
+    Output length: 4236 chars
+  E2E: mean=5.645s  P90=5.684s
+  TTFT: mean=1971.8ms
+
+===== BURST N=10 =====
+
+  Running: burst_10 run 1/10 (seed=1000, n=10, rate=inf)
+    Output length: 4380 chars
+
+  Running: burst_10 run 2/10 (seed=1100, n=10, rate=inf)
+    Output length: 4242 chars
+
+  Running: burst_10 run 3/10 (seed=1200, n=10, rate=inf)
+    Output length: 4427 chars
+
+  Running: burst_10 run 4/10 (seed=1300, n=10, rate=inf)
+    Output length: 4380 chars
+
+  Running: burst_10 run 5/10 (seed=1400, n=10, rate=inf)
+    Output length: 4427 chars
+
+  Running: burst_10 run 6/10 (seed=1500, n=10, rate=inf)
+    Output length: 4289 chars
+
+  Running: burst_10 run 7/10 (seed=1600, n=10, rate=inf)
+    Output length: 4242 chars
+
+  Running: burst_10 run 8/10 (seed=1700, n=10, rate=inf)
+    Output length: 4242 chars
+
+  Running: burst_10 run 9/10 (seed=1800, n=10, rate=inf)
+    Output length: 4242 chars
+
+  Running: burst_10 run 10/10 (seed=1900, n=10, rate=inf)
+    Output length: 4242 chars
+  E2E: mean=5.036s  P90=5.106s
+  TTFT: mean=1588.9ms
+
+===== BURST N=15 =====
+
+  Running: burst_15 run 1/10 (seed=1000, n=15, rate=inf)
+    Output length: 4242 chars
+
+  Running: burst_15 run 2/10 (seed=1100, n=15, rate=inf)
+    Output length: 4475 chars
+
+  Running: burst_15 run 3/10 (seed=1200, n=15, rate=inf)
+    Output length: 4242 chars
+
+  Running: burst_15 run 4/10 (seed=1300, n=15, rate=inf)
+    Output length: 4242 chars
+
+  Running: burst_15 run 5/10 (seed=1400, n=15, rate=inf)
+    Output length: 4337 chars
+
+  Running: burst_15 run 6/10 (seed=1500, n=15, rate=inf)
+    Output length: 4289 chars
+
+  Running: burst_15 run 7/10 (seed=1600, n=15, rate=inf)
+    Output length: 4380 chars
+
+  Running: burst_15 run 8/10 (seed=1700, n=15, rate=inf)
+    Output length: 4242 chars
+
+  Running: burst_15 run 9/10 (seed=1800, n=15, rate=inf)
+    Output length: 4333 chars
+
+  Running: burst_15 run 10/10 (seed=1900, n=15, rate=inf)
+    Output length: 4333 chars
+  E2E: mean=9.961s  P90=16.647s
+  TTFT: mean=3762.7ms
+
+===== BURST N=20 =====
+
+  Running: burst_20 run 1/10 (seed=1000, n=20, rate=inf)
+    Output length: 4195 chars
+
+  Running: burst_20 run 2/10 (seed=1100, n=20, rate=inf)
+    Output length: 4333 chars
+
+  Running: burst_20 run 3/10 (seed=1200, n=20, rate=inf)
+    Output length: 4333 chars
+
+  Running: burst_20 run 4/10 (seed=1300, n=20, rate=inf)
+    Output length: 4333 chars
+
+  Running: burst_20 run 5/10 (seed=1400, n=20, rate=inf)
+    Output length: 4195 chars
+
+  Running: burst_20 run 6/10 (seed=1500, n=20, rate=inf)
+    Output length: 4333 chars
+
+  Running: burst_20 run 7/10 (seed=1600, n=20, rate=inf)
+    Output length: 4333 chars
+
+  Running: burst_20 run 8/10 (seed=1700, n=20, rate=inf)
+    Output length: 4333 chars
+
+  Running: burst_20 run 9/10 (seed=1800, n=20, rate=inf)
+    Output length: 4333 chars
+
+  Running: burst_20 run 10/10 (seed=1900, n=20, rate=inf)
+    Output length: 4195 chars
+  E2E: mean=21.616s  P90=21.651s
+  TTFT: mean=10851.3ms
+
+===== BURST N=30 =====
+
+  Running: burst_30 run 1/10 (seed=1000, n=30, rate=inf)
+    Output length: 4380 chars
+
+  Running: burst_30 run 2/10 (seed=1100, n=30, rate=inf)
+    Output length: 4381 chars
+
+  Running: burst_30 run 3/10 (seed=1200, n=30, rate=inf)
+    Output length: 4381 chars
+
+  Running: burst_30 run 4/10 (seed=1300, n=30, rate=inf)
+    Output length: 4380 chars
+
+  Running: burst_30 run 5/10 (seed=1400, n=30, rate=inf)
+    Output length: 4381 chars
+
+  Running: burst_30 run 6/10 (seed=1500, n=30, rate=inf)
+    Output length: 4381 chars
+
+  Running: burst_30 run 7/10 (seed=1600, n=30, rate=inf)
+    Output length: 4243 chars
+
+  Running: burst_30 run 8/10 (seed=1700, n=30, rate=inf)
+    Output length: 4290 chars
+
+  Running: burst_30 run 9/10 (seed=1800, n=30, rate=inf)
+    Output length: 4381 chars
+
+  Running: burst_30 run 10/10 (seed=1900, n=30, rate=inf)
+    Output length: 4381 chars
+  E2E: mean=31.207s  P90=31.277s
+  TTFT: mean=15541.9ms
+
+JSON saved to /tmp/gpu-tp4-p90-results.json
+
+============================================================
+SUMMARY — GPU 4x RTX Pro 6000 (TP=4)
+============================================================
+  single_10runs       : E2E mean=3.306s  P90=3.313s  TTFT=1108ms
+  qps_0.1             : E2E mean=3.431s  P90=3.791s  TTFT=967ms
+  qps_0.15            : E2E mean=3.682s  P90=4.112s  TTFT=1033ms
+  qps_0.2             : E2E mean=3.983s  P90=4.541s  TTFT=1047ms
+  qps_0.25            : E2E mean=4.216s  P90=4.668s  TTFT=1067ms
+  qps_0.3             : E2E mean=4.506s  P90=5.035s  TTFT=1106ms
+  qps_0.4             : E2E mean=4.913s  P90=5.451s  TTFT=1210ms
+  qps_0.5             : E2E mean=5.743s  P90=6.444s  TTFT=1340ms
+  qps_0.7             : E2E mean=6.714s  P90=7.669s  TTFT=1565ms
+  qps_1.0             : E2E mean=8.327s  P90=8.787s  TTFT=2067ms
+  burst_1             : E2E mean=2.699s  P90=3.158s  TTFT=536ms
+  burst_2             : E2E mean=3.016s  P90=3.480s  TTFT=592ms
+  burst_5             : E2E mean=4.762s  P90=5.568s  TTFT=1797ms
+  burst_8             : E2E mean=5.645s  P90=5.684s  TTFT=1972ms
+  burst_10            : E2E mean=5.036s  P90=5.106s  TTFT=1589ms
+  burst_15            : E2E mean=9.961s  P90=16.647s  TTFT=3763ms
+  burst_20            : E2E mean=21.616s  P90=21.651s  TTFT=10851ms
+  burst_30            : E2E mean=31.207s  P90=31.277s  TTFT=15542ms

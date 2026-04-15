@@ -1,27 +1,27 @@
-# vLLM Configuration — GPU (RTX Pro 6000 Blackwell)
-# 1x NVIDIA RTX PRO 6000, 96GB GDDR7, FP8 quantization
+# vLLM GPU Configuration — 4× NVIDIA RTX Pro 6000 (Blackwell)
+# Machine: g4-standard-192 (4 GPUs, 192 vCPUs, 768GB RAM)
+# Used for: gemma4-benchmark-report Section 2
 
 model: google/gemma-4-26B-A4B-it
-host: "0.0.0.0"
+host: 0.0.0.0
 port: 8000
 dtype: bfloat16
 quantization: fp8
-gpu_memory_utilization: 0.95
-max_model_len: 128000
-max_num_batched_tokens: 65536
-max_num_seqs: 8
-enable_chunked_prefill: true
-enable_prefix_caching: true
+gpu-memory-utilization: 0.95
+max-model-len: 128000
+max-num-batched-tokens: 65536
+max-num-seqs: 32
+enable-chunked-prefill: true
+enable-prefix-caching: true
+tensor-parallel-size: 4
+trust-remote-code: true
 
-# Memory breakdown at this config:
-#   Model weights (FP8): 25.67 GiB
-#   KV cache: 53.86 GiB (235,296 tokens)
-#   CUDA graphs + overhead: ~10 GiB
-#   Total: 89.4 / 97.9 GiB (91.4%)
-
-# Launch command:
-# vllm serve google/gemma-4-26B-A4B-it \
-#     --dtype bfloat16 --quantization fp8 \
-#     --gpu-memory-utilization 0.95 --max-model-len 128000 \
-#     --max-num-batched-tokens 65536 --max-num-seqs 8 \
-#     --enable-chunked-prefill --enable-prefix-caching
+# vLLM reports per GPU:
+#   - Model weights: ~6.4 GiB per GPU (25.67 GiB / 4)
+#   - KV cache: ~73 GiB per GPU
+#   - GPU utilization: ~83% per GPU
+#
+# Performance:
+#   - Single request E2E: 3.31s (P90) — meets 3.5s target ✅
+#   - TTFT: 1,108ms (5.2× faster than 1×GPU)
+#   - Peak throughput: 489.7 tok/s at burst N=10
