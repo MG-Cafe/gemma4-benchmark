@@ -73,7 +73,7 @@ gpu_burst = [
 ]
 
 # =============================================================================
-# MEASURED DATA — TPU v6e-4 Trillium (4 chips, 125GB HBM, BF16)
+# MEASURED DATA — TPU v6e-4 Trillium (4 chips, 128GB HBM, BF16)
 # vLLM Docker (vllm/vllm-tpu:gemma4), TP=4, max-model-len=128000
 # UNIQUE RANDOM prompts per request (no prefix caching)
 # =============================================================================

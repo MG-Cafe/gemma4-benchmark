@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 GPU benchmark for Gemma 4 26B-A4B with TP=4 (4x RTX Pro 6000).
-Matches TPU v6e-8 (TP=8) benchmark methodology.
+Matches TPU v6e-4 (TP=4) benchmark methodology.
 Uses vllm bench serve with fresh random prompts per run.
 Collects P90 E2E, TTFT, TPOT for all scenarios.
 """

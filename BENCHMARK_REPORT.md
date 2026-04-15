@@ -195,7 +195,7 @@ Each request uses a **freshly generated unique random prompt** (~20K tokens) to 
 - **TPOT stays excellent at low concurrency**: 7.2ms (N=1) → 8.7ms (N=2), competitive with GPU
 - **TPOT degrades at high concurrency**: 14.4ms (N=5) → 27.3ms (N=20)
 - **Single request and low QPS (≤0.4) meet 3.5s target** — P90 E2E ~2.52s
-- **Burst N≥2 exceeds 3.5s target** — prefill queuing on 4 chips causes TTFT growth
+- **Burst N≥5 exceeds 3.5s target** — prefill queuing on 4 chips causes TTFT growth (N=2 at 3.26s still within target)
 - **TPU wins single-request TTFT** vs GPU (706ms vs 1,108ms) — faster prefill per chip
 
 ---
@@ -246,10 +246,10 @@ Each request uses a **freshly generated unique random prompt** (~20K tokens) to 
 | 30 | 5,594 | 6,377 | 9.06 | 9.90 |
 
 **Key observations:**
-- Lowest single-request P90 E2E of all platforms (3.09s)
+- Competitive single-request P90 E2E (3.09s) — second only to TPU v6e-4 (2.52s)
 - MaaS stays remarkably flat under QPS sweep: P90 E2E 2.94-3.09s from 0.1-0.5 QPS
 - Burst P90 E2E scales linearly and predictably (3.79s at N=2 → 9.90s at N=30)
-- Only platform to meet 3.5s P90 at sustained QPS up to 0.5
+- Both TPU and MaaS meet 3.5s P90 at sustained QPS up to 0.5; MaaS offers zero-infrastructure advantage
 
 ---
 
