@@ -1,0 +1,114 @@
+======================================================================
+Vertex AI MaaS Benchmark - Fair Comparison (Fresh Random Prompts)
+Model: google/gemma-4-26b-a4b-it-maas
+Input: ~20K tokens (unique random per request)
+Output: 250 tokens
+Requests per test: 10
+======================================================================
+
+>>> PHASE 1: Single Request Baseline (10 cold runs)
+  Run 1/10: E2E=3.233s  TTFT=1669.2ms  TPOT=6.184374668683663ms
+  Run 2/10: E2E=2.877s  TTFT=1477.3ms  TPOT=5.522554139217058ms
+  Run 3/10: E2E=2.897s  TTFT=1299.6ms  TPOT=6.305784818185753ms
+  Run 4/10: E2E=3.074s  TTFT=1509.0ms  TPOT=6.17758591336558ms
+  Run 5/10: E2E=2.884s  TTFT=1231.2ms  TPOT=6.5342515588281636ms
+  Run 6/10: E2E=2.839s  TTFT=1249.5ms  TPOT=6.273756939101504ms
+  Run 7/10: E2E=2.867s  TTFT=1190.6ms  TPOT=6.616661748088213ms
+  Run 8/10: E2E=2.854s  TTFT=1219.0ms  TPOT=6.460689453489752ms
+  Run 9/10: E2E=2.886s  TTFT=1210.0ms  TPOT=6.618107457559897ms
+  Run 10/10: E2E=2.936s  TTFT=1245.1ms  TPOT=6.698521009954324ms
+  ===== SINGLE REQUEST (10 runs) =====
+  Requests: 10/10
+  E2E:  mean=2.935s  med=2.885s  P90=3.090s  P99=3.219s  min=2.839s  max=3.233s
+  TTFT: mean=1330.0ms  med=1247.3ms  P90=1525.0ms  P99=1654.8ms
+  TPOT: mean=6.34ms  med=6.38ms  P90=6.63ms
+
+>>> PHASE 2: QPS Sweep
+  ===== QPS=0.1 =====
+  Requests: 10/10
+  E2E:  mean=2.903s  med=2.908s  P90=2.935s  P99=3.001s  min=2.831s  max=3.008s
+  TTFT: mean=1274.5ms  med=1264.7ms  P90=1347.6ms  P99=1371.3ms
+  TPOT: mean=6.44ms  med=6.47ms  P90=6.56ms
+  ===== QPS=0.15 =====
+  Requests: 10/10
+  E2E:  mean=3.024s  med=3.046s  P90=3.142s  P99=3.144s  min=2.849s  max=3.144s
+  TTFT: mean=1396.7ms  med=1418.4ms  P90=1527.3ms  P99=1577.9ms
+  TPOT: mean=6.42ms  med=6.41ms  P90=6.67ms
+  ===== QPS=0.2 =====
+  Requests: 10/10
+  E2E:  mean=2.941s  med=2.882s  P90=3.052s  P99=3.057s  min=2.859s  max=3.057s
+  TTFT: mean=1311.1ms  med=1292.2ms  P90=1380.1ms  P99=1401.4ms
+  TPOT: mean=6.44ms  med=6.37ms  P90=6.66ms
+  ===== QPS=0.25 =====
+  Requests: 10/10
+  E2E:  mean=2.945s  med=2.905s  P90=3.056s  P99=3.171s  min=2.845s  max=3.184s
+  TTFT: mean=1284.1ms  med=1289.9ms  P90=1344.7ms  P99=1369.9ms
+  TPOT: mean=6.56ms  med=6.47ms  P90=6.75ms
+  ===== QPS=0.3 =====
+  Requests: 10/10
+  E2E:  mean=2.912s  med=2.866s  P90=3.079s  P99=3.140s  min=2.833s  max=3.146s
+  TTFT: mean=1292.0ms  med=1265.9ms  P90=1446.5ms  P99=1451.4ms
+  TPOT: mean=6.40ms  med=6.43ms  P90=6.61ms
+  ===== QPS=0.4 =====
+  Requests: 10/10
+  E2E:  mean=3.005s  med=3.054s  P90=3.094s  P99=3.102s  min=2.837s  max=3.103s
+  TTFT: mean=1335.4ms  med=1369.2ms  P90=1440.3ms  P99=1486.1ms
+  TPOT: mean=6.60ms  med=6.59ms  P90=6.72ms
+  ===== QPS=0.5 =====
+  Requests: 10/10
+  E2E:  mean=2.932s  med=2.902s  P90=3.054s  P99=3.079s  min=2.831s  max=3.082s
+  TTFT: mean=1283.6ms  med=1242.8ms  P90=1399.2ms  P99=1471.5ms
+  TPOT: mean=6.51ms  med=6.58ms  P90=6.67ms
+  ===== QPS=0.7 =====
+  Requests: 10/10
+  E2E:  mean=3.273s  med=3.220s  P90=3.798s  P99=3.884s  min=2.847s  max=3.893s
+  TTFT: mean=1276.5ms  med=1260.4ms  P90=1378.9ms  P99=1435.3ms
+  TPOT: mean=7.91ms  med=7.54ms  P90=9.81ms
+  ===== QPS=1.0 =====
+  Requests: 10/10
+  E2E:  mean=3.371s  med=3.557s  P90=3.610s  P99=3.721s  min=2.799s  max=3.734s
+  TTFT: mean=1303.3ms  med=1229.7ms  P90=1568.3ms  P99=1570.0ms
+  TPOT: mean=8.18ms  med=8.41ms  P90=9.65ms
+
+>>> PHASE 3: Burst Sweep
+  ===== BURST N=1 =====
+  Requests: 1/1
+  E2E:  mean=3.805s  med=3.805s  P90=0.000s  P99=0.000s  min=3.805s  max=3.805s
+  TTFT: mean=1484.4ms  med=1484.4ms  P90=0.0ms  P99=0.0ms
+  TPOT: mean=9.19ms  med=9.19ms  P90=0.00ms
+  ===== BURST N=2 =====
+  Requests: 2/2
+  E2E:  mean=3.635s  med=3.635s  P90=3.793s  P99=3.828s  min=3.437s  max=3.832s
+  TTFT: mean=1533.1ms  med=1533.1ms  P90=1533.2ms  P99=1533.3ms
+  TPOT: mean=8.31ms  med=8.31ms  P90=8.94ms
+  ===== BURST N=5 =====
+  Requests: 5/5
+  E2E:  mean=3.925s  med=4.117s  P90=4.204s  P99=4.254s  min=3.248s  max=4.259s
+  TTFT: mean=1655.4ms  med=1656.5ms  P90=2028.9ms  P99=2237.5ms
+  TPOT: mean=8.99ms  med=9.65ms  P90=10.31ms
+  ===== BURST N=8 =====
+  Requests: 8/8
+  E2E:  mean=4.450s  med=4.454s  P90=4.951s  P99=4.951s  min=3.997s  max=4.951s
+  TTFT: mean=1836.4ms  med=1742.9ms  P90=2116.2ms  P99=2305.0ms
+  TPOT: mean=10.35ms  med=10.27ms  P90=12.31ms
+  ===== BURST N=10 =====
+  Requests: 10/10
+  E2E:  mean=5.120s  med=5.261s  P90=6.106s  P99=6.149s  min=3.797s  max=6.154s
+  TTFT: mean=2391.5ms  med=2178.3ms  P90=2824.0ms  P99=3294.7ms
+  TPOT: mean=10.79ms  med=10.79ms  P90=13.48ms
+  ===== BURST N=15 =====
+  Requests: 15/15
+  E2E:  mean=6.169s  med=5.973s  P90=7.302s  P99=7.868s  min=5.143s  max=7.870s
+  TTFT: mean=3273.6ms  med=3187.9ms  P90=3703.2ms  P99=3767.6ms
+  TPOT: mean=11.49ms  med=10.63ms  P90=15.20ms
+  ===== BURST N=20 =====
+  Requests: 20/20
+  E2E:  mean=7.423s  med=7.511s  P90=8.221s  P99=8.230s  min=6.381s  max=8.230s
+  TTFT: mean=4201.1ms  med=4195.0ms  P90=4964.0ms  P99=5376.2ms
+  TPOT: mean=12.77ms  med=12.10ms  P90=16.38ms
+  ===== BURST N=30 =====
+  Requests: 30/30
+  E2E:  mean=9.058s  med=9.109s  P90=9.903s  P99=9.913s  min=7.661s  max=9.915s
+  TTFT: mean=5594.4ms  med=5535.1ms  P90=6376.5ms  P99=6918.3ms
+  TPOT: mean=13.75ms  med=13.04ms  P90=17.83ms
+JSON saved to /tmp/maas-p90-remaining.json
