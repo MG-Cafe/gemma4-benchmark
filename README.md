@@ -22,50 +22,49 @@ This repository benchmarks **Google's Gemma 4 26B-A4B-it** (26B params, MoE with
 
 ---
 
-## Quick Results
+## Quick Results (P90 E2E — Customer SLA Metric)
 
-### Single Request (Baseline)
+All values below are **P90 E2E latency** (10 runs per data point) — the metric that matters for customer SLAs.
 
-| Metric | GPU | TPU v6e-8 | **Vertex AI MaaS** | Winner |
-|--------|-----|-----------|-----------|--------|
-| **TTFT** | 1,009ms | 821ms² | **491ms** | **MaaS** |
-| **TPOT** | 9.27ms | **8.60ms** | N/A¹ | **TPU** |
-| **E2E Latency** | 3.32s | **2.97s** | **0.80s** | **MaaS** |
+### Single Request (Baseline, 10 cold runs)
 
-### Under Load (0.3 QPS, cold TTFT)
+| Metric | GPU | TPU v6e-8 | Vertex AI MaaS | Winner |
+|--------|-----|-----------|----------------|--------|
+| **Mean TTFT** | 5,731ms | 1,948ms | **1,330ms** | **MaaS** |
+| **Mean E2E** | 8.16s | 3.67s | **2.94s** | **MaaS** |
+| **P90 E2E** | 8.33s | 3.69s | **3.09s** | **MaaS** |
 
-| Metric | GPU | TPU v6e-8 | **Vertex AI MaaS** | Winner |
-|--------|-----|-----------|-----------|--------|
-| **Mean TTFT (cold)** | ⚠️ 1,009ms³ | 93ms | 680ms | **TPU** |
-| **Mean TPOT** | 10.46ms | **8.79ms** | N/A¹ | **TPU** |
-| **E2E Latency (cold)** | ⚠️ 3.61s³ | **2.28s** | **1.00s** | **MaaS** |
+### Under Load (0.3 QPS Steady State)
+
+| Metric | GPU | TPU v6e-8 | Vertex AI MaaS | Winner |
+|--------|-----|-----------|----------------|--------|
+| **Mean TTFT** | 1,056ms | **386ms** | 1,292ms | **TPU** |
+| **Mean E2E** | 3.64s | **2.14s** | 2.91s | **TPU** |
+| **P90 E2E** | 5.90s | **2.13s** | 3.08s | **TPU** |
 
 ### Burst (20 concurrent requests)
 
-| Metric | GPU | TPU v6e-8 | **Vertex AI MaaS** | Winner |
-|--------|-----|-----------|-----------|--------|
-| **Mean TTFT** | 4,651ms | **1,686ms** | 3,091ms | **TPU** |
-| **Mean TPOT** | **15.23ms** | 26.59ms | N/A¹ | **GPU** |
-| **Throughput** | 323.9 tok/s | N/A⁴ | **~5.0 req/s** | **GPU** (tok/s) |
-| **Mean E2E** | 8.44s | 8.31s | **3.42s** | **MaaS** |
+| Metric | GPU | TPU v6e-8 | Vertex AI MaaS | Winner |
+|--------|-----|-----------|----------------|--------|
+| **Mean TTFT** | 8,601ms | **2,683ms** | 4,201ms | **TPU** |
+| **Mean E2E** | 11.37s | 7.47s | **7.42s** | **MaaS** |
+| **P90 E2E** | 14.88s | **7.03s** | 8.22s | **TPU** |
 
-> ¹ Managed APIs: per-token timing (TPOT) not measurable  
-> ² First-request TTFT includes XLA compilation overhead; steady-state TTFT is ~87ms  
-> ³ GPU QPS sweep measured 88ms TTFT due to prefix caching with `seed=42`, but customer states "low cache hit rate". Cold TTFT (1,009ms) used here; cold E2E = 1,009 + 249×10.46 = **3.61s, exceeding 3.5s target**  
-> ⁴ TPU burst output tok/s not directly measured in this configuration
+> **Fair methodology**: All benchmarks use fresh random prompts per request (no prefix caching bias).  
+> MaaS P90 measured directly; GPU/TPU P90 from per-request E2E distributions (10 runs each).
 
 ---
 
 ## Key Findings
 
-1. **🏆 MaaS wins on E2E latency** across all scenarios: 0.80s single, 1.00s at 0.3 QPS, 3.42s burst N=20
-2. **⚠️ GPU FAILS 3.5s target at 0.3 QPS** with cold TTFT: E2E = 3.61s (customer has "low cache hit rate")
-3. **TPU meets 3.5s target** for single (2.97s) and sustained (2.28s) workloads; GPU only meets it for single requests (3.32s)
-4. **TPU wins burst TTFT**: N=20 TTFT=1.7s vs GPU's 4.7s (**2.8x faster**) — 256GB HBM reduces prefill queuing
-5. **GPU wins burst decode**: TPOT=15.23ms at N=20 vs TPU's 26.59ms — GPU decode degrades less under load
-6. **Under burst N=20, E2E is similar**: GPU 8.44s ≈ TPU 8.31s (TPU's TTFT advantage offset by higher TPOT)
-7. **Self-hosted GPU** wins for streaming use cases (real token-by-token output at 9-16ms/token)
-8. **⚠️ P90 E2E not measured**: All E2E values are mean estimates — customer's P90 target needs separate validation
+1. **🏆 TPU wins P90 E2E under load**: 2.13s at 0.3 QPS, 7.03s at burst N=20 — best for SLA-sensitive workloads
+2. **MaaS wins single-request P90**: 3.09s vs TPU 3.69s vs GPU 8.33s — lowest latency for individual requests
+3. **⚠️ GPU FAILS 3.5s P90 target** in ALL scenarios: 8.33s single, 5.90s at 0.3 QPS, 14.88s burst N=20
+4. **TPU meets 3.5s P90 target** at steady-state QPS ≤0.5 (P90 ≈ 2.1-2.2s) but exceeds it under burst
+5. **MaaS stays flat under QPS sweep**: P90 E2E ~3.0-3.1s from 0.1-0.5 QPS (auto-scaling handles steady load)
+6. **TPU wins burst TTFT**: 2.7s at N=20 vs GPU 8.6s vs MaaS 4.2s — 256GB HBM enables fast prefill
+7. **MaaS degrades gracefully under burst**: P90 E2E goes from 3.8s (N=2) to 9.9s (N=30), scales linearly
+8. **All P90 E2E values are measured** from real per-request distributions (not estimated from mean TTFT+TPOT)
 
 ---
 
