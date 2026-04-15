@@ -52,8 +52,14 @@ rtx_baseline = {
     'tpot_ms': 9.81,
     'itl_median_ms': 9.82,
     'output_tok_s': 75.4,
-    'e2e_s': 8.164,  # 5730 + 249*9.81 = 8173ms ≈ 8.16s (measured: 8.164s)
+    'e2e_s': 8.164,
+    'e2e_p90_s': 8.333,
+    'ttft_p90_ms': 5898.7,
 }
+
+# P90 E2E from gpu-p90-results.json (10 runs per data point)
+rtx_p90_qps = [3.279, 3.508, 4.133, 4.970, 5.897, 6.609, 7.146, 8.213, 8.127]
+rtx_p90_burst = [0.0, 8.538, 9.146, 8.659, 11.699, 11.735, 14.877, 18.074]
 
 # Burst sweep: all requests at once (--request-rate inf), fresh prompts
 rtx_burst = [
@@ -105,9 +111,15 @@ tpu_baseline = {
     'ttft_ms': 1947.9,  # 128K context, cold prompts
     'tpot_ms': 6.93,
     'itl_median_ms': 6.94,
-    'output_tok_s': 145.0,  # 250 / (3.66 - 1.95) ≈ 145 tok/s
-    'total_tok_s': 5530.0,  # (20000 + 250) / 3.66 ≈ 5530
+    'output_tok_s': 145.0,
+    'total_tok_s': 5530.0,
+    'e2e_p90_s': 3.685,
+    'ttft_p90_ms': 1954.8,
 }
+
+# P90 E2E from tpu-p90-results.json (10 runs per data point)
+tpu_p90_qps = [2.150, 2.122, 2.140, 2.170, 2.134, 2.134, 2.150, 2.427, 2.878]
+tpu_p90_burst = [0.0, 3.725, 4.182, 4.400, 4.820, 5.758, 7.033]  # N=1..20
 
 # =============================================================================
 # MEASURED DATA — Vertex AI (Managed Model Garden endpoint, TPU-backed)
@@ -483,56 +495,45 @@ def plot_09():
     ax.set_title('Single Request: Mean TTFT', fontweight='bold', color='#ffd700')
     ax.grid(True, axis='y')
 
-    # Panel 2: Single E2E — P90 (customer SLA metric)
+    # Panel 2: Single E2E — P90 (customer SLA metric, all chips)
     ax = axes[0,1]
-    # GPU/TPU: estimate P90 ≈ mean (only mean available from vllm bench)
-    # MaaS: actual measured P90 from 10 runs
-    vals = [rtx_baseline['e2e_s'], calc_e2e(tpu_baseline['ttft_ms'], tpu_baseline['tpot_ms'])/1000, maas_baseline['e2e_p90_s']]
+    vals = [rtx_baseline['e2e_p90_s'], tpu_baseline['e2e_p90_s'], maas_baseline['e2e_p90_s']]
     bars = ax.bar(labels, vals, color=colors, alpha=0.85, edgecolor='white', linewidth=0.5, width=0.6)
-    annot_labels = [f'{vals[0]:.2f}s\n(mean†)', f'{vals[1]:.2f}s\n(mean†)', f'{vals[2]:.2f}s\n(P90)']
-    for b, v, lbl in zip(bars, vals, annot_labels):
-        ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.05, lbl, ha='center', va='bottom', fontweight='bold', color='white', fontsize=11)
-    ax.set_ylabel('E2E Latency (s)')
-    ax.set_title('Single Request: E2E Latency (P90 where available)', fontweight='bold', color='#ffd700')
+    for b, v in zip(bars, vals):
+        ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.05, f'{v:.2f}s', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
+    ax.set_ylabel('P90 E2E Latency (s)')
+    ax.set_title('Single Request: P90 E2E Latency', fontweight='bold', color='#ffd700')
     ax.grid(True, axis='y')
     ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
     ax.legend(facecolor='#16213e', edgecolor='#444')
 
-    # Panel 3: Burst 20 E2E — P90 for MaaS, mean for GPU/TPU
+    # Panel 3: Burst 20 E2E — P90 for all chips
     ax = axes[1,0]
-    gpu_b20_e2e = calc_e2e(rtx_burst[6][3], rtx_burst[6][4]) / 1000
-    tpu_b20_e2e = calc_e2e(tpu_burst[6][1], tpu_burst[6][4]) / 1000
-    maas_b20_p90 = maas_burst[6][7]  # P90 E2E
-    vals = [gpu_b20_e2e, tpu_b20_e2e, maas_b20_p90]
+    vals = [rtx_p90_burst[6], tpu_p90_burst[6], maas_burst[6][7]]
     bars = ax.bar(labels, vals, color=colors, alpha=0.85, edgecolor='white', linewidth=0.5, width=0.6)
-    annot_labels = [f'{vals[0]:.1f}s\n(mean†)', f'{vals[1]:.1f}s\n(mean†)', f'{vals[2]:.1f}s\n(P90)']
-    for b, v, lbl in zip(bars, vals, annot_labels):
-        ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.15, lbl, ha='center', va='bottom', fontweight='bold', color='white', fontsize=11)
-    ax.set_ylabel('E2E Latency (s)')
-    ax.set_title('Burst 20: E2E Latency (P90 where available)', fontweight='bold', color='#ffd700')
+    for b, v in zip(bars, vals):
+        ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.15, f'{v:.1f}s', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
+    ax.set_ylabel('P90 E2E Latency (s)')
+    ax.set_title('Burst 20: P90 E2E Latency', fontweight='bold', color='#ffd700')
     ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
     ax.legend(facecolor='#16213e', edgecolor='#444')
     ax.grid(True, axis='y')
 
-    # Panel 4: Burst E2E sweep — mean for GPU/TPU, P90 for MaaS
+    # Panel 4: Burst E2E sweep — P90 for all chips
     ax = axes[1,1]
     rtx_burst_n = [d[0] for d in rtx_burst]
-    rtx_burst_e2e = [calc_e2e(d[3], d[4])/1000 for d in rtx_burst]
-    ax.plot(rtx_burst_n, rtx_burst_e2e, 's-', color='#00ff88', linewidth=2, markersize=8, label='GPU mean E2E')
+    rtx_bp90_valid = [(n, p) for n, p in zip(rtx_burst_n, rtx_p90_burst) if p > 0]
+    ax.plot([x[0] for x in rtx_bp90_valid], [x[1] for x in rtx_bp90_valid], 's-', color='#00ff88', linewidth=2, markersize=8, label='GPU P90 E2E')
     tpu_bn = [d[0] for d in tpu_burst]
-    tpu_be2e = [calc_e2e(d[1], d[4])/1000 for d in tpu_burst]
-    ax.plot(tpu_bn, tpu_be2e, 'D-', color='#ff6b6b', linewidth=2, markersize=8, label='TPU mean E2E', zorder=4)
-    # MaaS: show both mean and P90
-    maas_burst_n = [d[0] for d in maas_burst]
-    maas_burst_mean = [d[4] for d in maas_burst]
-    maas_burst_p90 = [d[7] for d in maas_burst if d[7] > 0]
+    tpu_bp90_valid = [(n, p) for n, p in zip(tpu_bn, tpu_p90_burst) if p > 0]
+    ax.plot([x[0] for x in tpu_bp90_valid], [x[1] for x in tpu_bp90_valid], 'D-', color='#ff6b6b', linewidth=2, markersize=8, label='TPU P90 E2E', zorder=4)
     maas_burst_n_p90 = [d[0] for d in maas_burst if d[7] > 0]
-    ax.plot(maas_burst_n, maas_burst_mean, '^--', color='#bb86fc', linewidth=1.5, markersize=7, alpha=0.5, label='MaaS mean E2E')
-    ax.plot(maas_burst_n_p90, maas_burst_p90, '^-', color='#bb86fc', linewidth=2.5, markersize=9, label='MaaS P90 E2E', zorder=5)
+    maas_burst_p90 = [d[7] for d in maas_burst if d[7] > 0]
+    ax.plot(maas_burst_n_p90, maas_burst_p90, '^-', color='#bb86fc', linewidth=2, markersize=8, label='MaaS P90 E2E', zorder=5)
     ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
     ax.set_xlabel('Burst Size (N concurrent)', color='#ccc')
-    ax.set_ylabel('E2E Latency (s)')
-    ax.set_title('Burst Sweep: E2E Latency (P90 for MaaS)', fontweight='bold', color='#ffd700')
+    ax.set_ylabel('P90 E2E Latency (s)')
+    ax.set_title('Burst Sweep: P90 E2E Latency', fontweight='bold', color='#ffd700')
     ax.legend(facecolor='#16213e', edgecolor='#444', fontsize=8)
     ax.grid(True)
 
@@ -560,15 +561,15 @@ def plot_10():
         ['-- Single Request --', '', '', '', ''],
         ['Mean TTFT (ms)', f'{rtx_baseline["ttft_ms"]:,.0f}', f'{tpu_baseline["ttft_ms"]:,.0f}', f'{maas_baseline["ttft_mean_ms"]:,.0f}', 'MaaS'],
         ['Mean E2E (s)', f'{rtx_baseline["e2e_s"]:.2f}', f'{calc_e2e(tpu_baseline["ttft_ms"], tpu_baseline["tpot_ms"])/1000:.2f}', f'{maas_baseline["e2e_mean_s"]:.2f}', 'MaaS'],
-        ['P90 E2E (s)', 'N/A†', 'N/A†', f'{maas_baseline["e2e_p90_s"]:.2f}', 'MaaS'],
+        ['P90 E2E (s)', f'{rtx_baseline["e2e_p90_s"]:.2f}', f'{tpu_baseline["e2e_p90_s"]:.2f}', f'{maas_baseline["e2e_p90_s"]:.2f}', 'MaaS'],
         ['-- 0.3 QPS Steady --', '', '', '', ''],
         ['Mean TTFT (ms)', f'{rtx_qps[4][3]:,.0f}', f'{tpu_qps[4][1]:,.0f}', f'{maas_qps[4][1]:,.0f}', 'TPU'],
         ['Mean E2E (s)', f'{calc_e2e(rtx_qps[4][3], rtx_qps[4][4])/1000:.2f}', f'{calc_e2e(tpu_qps[4][1], tpu_qps[4][4])/1000:.2f}', f'{maas_qps[4][4]:.2f}', 'TPU'],
-        ['P90 E2E (s)', 'N/A†', 'N/A†', f'{maas_qps[4][7]:.2f}', 'MaaS'],
+        ['P90 E2E (s)', f'{rtx_p90_qps[4]:.2f}', f'{tpu_p90_qps[4]:.2f}', f'{maas_qps[4][7]:.2f}', 'TPU'],
         ['-- Burst 20 --', '', '', '', ''],
         ['Mean TTFT (ms)', f'{rtx_burst[6][3]:,.0f}', f'{tpu_burst[6][1]:,.0f}', f'{maas_burst[6][1]:,.0f}', 'TPU'],
         ['Mean E2E (s)', f'{calc_e2e(rtx_burst[6][3], rtx_burst[6][4])/1000:.2f}', f'{calc_e2e(tpu_burst[6][1], tpu_burst[6][4])/1000:.2f}', f'{maas_burst[6][4]:.2f}', 'TPU'],
-        ['P90 E2E (s)', 'N/A†', 'N/A†', f'{maas_burst[6][7]:.2f}', '—'],
+        ['P90 E2E (s)', f'{rtx_p90_burst[6]:.2f}', f'{tpu_p90_burst[6]:.2f}', f'{maas_burst[6][7]:.2f}', 'TPU'],
         ['-- Cost --', '', '', '', ''],
         ['On-demand ($/hr)', '$4.50', '$21.60', 'Pay-per-token', 'GPU'],
         ['Cost/M out tokens', '$16.58', '$71.07', '$12.60**', 'MaaS'],
