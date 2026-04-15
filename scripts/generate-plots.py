@@ -470,7 +470,7 @@ def plot_09():
     for b, v in zip(bars, vals):
         ax.text(b.get_x()+b.get_width()/2, b.get_height()+50, f'{v:,}ms', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
     ax.set_ylabel('TTFT (ms)')
-    ax.set_title('Single Request: TTFT', fontweight='bold', color='#ffd700')
+    ax.set_title('Single Request: Mean TTFT', fontweight='bold', color='#ffd700')
     ax.grid(True, axis='y')
 
     # Panel 2: Single E2E (from baseline dicts and burst[0] data)
@@ -480,7 +480,7 @@ def plot_09():
     for b, v in zip(bars, vals):
         ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.05, f'{v:.2f}s', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
     ax.set_ylabel('E2E Latency (s)')
-    ax.set_title('Single Request: E2E Latency', fontweight='bold', color='#ffd700')
+    ax.set_title('Single Request: Mean E2E Latency', fontweight='bold', color='#ffd700')
     ax.grid(True, axis='y')
     ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
     ax.legend(facecolor='#16213e', edgecolor='#444')
