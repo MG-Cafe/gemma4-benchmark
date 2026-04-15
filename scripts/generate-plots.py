@@ -150,31 +150,41 @@ vai_burst = [
 # Fair comparison: unique prompts prevent prefix caching (like customer workload)
 # =============================================================================
 
+# Single request baseline (10 cold runs, fresh prompts)
+maas_baseline = {
+    'ttft_mean_ms': 1330.0,
+    'ttft_p90_ms': 1525.0,
+    'e2e_mean_s': 2.935,
+    'e2e_p90_s': 3.090,
+    'tpot_mean_ms': 6.34,
+    'tpot_p90_ms': 6.63,
+}
+
 # QPS sweep: 10 fresh random prompts per rate
 maas_qps = [
-    # (target_qps, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_latency_s, req_throughput)
-    (0.10, 1274.5, 1264.7, 1371.3, 2.903, 0.109),
-    (0.15, 1396.7, 1418.4, 1577.9, 3.024, 0.150),
-    (0.20, 1311.1, 1292.2, 1401.4, 2.941, 0.200),
-    (0.25, 1284.1, 1289.9, 1369.9, 2.945, 0.250),
-    (0.30, 1292.0, 1265.9, 1451.4, 2.912, 0.300),
-    (0.40, 1335.4, 1369.2, 1486.1, 3.005, 0.400),
-    (0.50, 1283.6, 1242.8, 1471.5, 2.932, 0.500),
-    (0.70, 1276.5, 1260.4, 1435.3, 3.273, 0.700),
-    (1.00, 1303.3, 1229.7, 1570.0, 3.371, 1.000),
+    # (target_qps, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_latency_s, req_throughput, p90_ttft_ms, p90_e2e_s)
+    (0.10, 1274.5, 1264.7, 1371.3, 2.903, 0.109, 1347.6, 2.935),
+    (0.15, 1396.7, 1418.4, 1577.9, 3.024, 0.150, 1527.3, 3.142),
+    (0.20, 1311.1, 1292.2, 1401.4, 2.941, 0.200, 1380.1, 3.052),
+    (0.25, 1284.1, 1289.9, 1369.9, 2.945, 0.250, 1344.7, 3.056),
+    (0.30, 1292.0, 1265.9, 1451.4, 2.912, 0.300, 1446.5, 3.079),
+    (0.40, 1335.4, 1369.2, 1486.1, 3.005, 0.400, 1440.3, 3.094),
+    (0.50, 1283.6, 1242.8, 1471.5, 2.932, 0.500, 1399.2, 3.054),
+    (0.70, 1276.5, 1260.4, 1435.3, 3.273, 0.700, 1378.9, 3.798),
+    (1.00, 1303.3, 1229.7, 1570.0, 3.371, 1.000, 1568.3, 3.610),
 ]
 
 # Burst sweep: all requests simultaneous, fresh random prompts
 maas_burst = [
-    # (N, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_latency_s, req_throughput)
-    ( 1, 1484.4, 1484.4, 1484.4, 3.805, 0.263),
-    ( 2, 1533.1, 1533.1, 1533.3, 3.635, 0.550),
-    ( 5, 1655.4, 1656.5, 2237.5, 3.925, 1.274),
-    ( 8, 1836.4, 1742.9, 2305.0, 4.450, 1.798),
-    (10, 2391.5, 2178.3, 3294.7, 5.120, 1.953),
-    (15, 3273.6, 3187.9, 3767.6, 6.169, 2.431),
-    (20, 4201.1, 4195.0, 5376.2, 7.423, 2.694),
-    (30, 5594.4, 5535.1, 6918.3, 9.058, 3.312),
+    # (N, mean_ttft_ms, median_ttft_ms, p99_ttft_ms, mean_latency_s, req_throughput, p90_ttft_ms, p90_e2e_s)
+    ( 1, 1484.4, 1484.4, 1484.4, 3.805, 0.263, 0.0, 0.000),
+    ( 2, 1533.1, 1533.1, 1533.3, 3.635, 0.550, 1533.2, 3.793),
+    ( 5, 1655.4, 1656.5, 2237.5, 3.925, 1.274, 2028.9, 4.204),
+    ( 8, 1836.4, 1742.9, 2305.0, 4.450, 1.798, 2116.2, 4.951),
+    (10, 2391.5, 2178.3, 3294.7, 5.120, 1.953, 2824.0, 6.106),
+    (15, 3273.6, 3187.9, 3767.6, 6.169, 2.431, 3703.2, 7.302),
+    (20, 4201.1, 4195.0, 5376.2, 7.423, 2.694, 4964.0, 8.221),
+    (30, 5594.4, 5535.1, 6918.3, 9.058, 3.312, 6376.5, 9.903),
 ]
 
 # =============================================================================
@@ -473,43 +483,57 @@ def plot_09():
     ax.set_title('Single Request: Mean TTFT', fontweight='bold', color='#ffd700')
     ax.grid(True, axis='y')
 
-    # Panel 2: Single E2E (from baseline dicts and burst[0] data)
+    # Panel 2: Single E2E — P90 (customer SLA metric)
     ax = axes[0,1]
-    vals = [rtx_baseline['e2e_s'], calc_e2e(tpu_baseline['ttft_ms'], tpu_baseline['tpot_ms'])/1000, maas_burst[0][4]]
+    # GPU/TPU: estimate P90 ≈ mean (only mean available from vllm bench)
+    # MaaS: actual measured P90 from 10 runs
+    vals = [rtx_baseline['e2e_s'], calc_e2e(tpu_baseline['ttft_ms'], tpu_baseline['tpot_ms'])/1000, maas_baseline['e2e_p90_s']]
     bars = ax.bar(labels, vals, color=colors, alpha=0.85, edgecolor='white', linewidth=0.5, width=0.6)
-    for b, v in zip(bars, vals):
-        ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.05, f'{v:.2f}s', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
+    annot_labels = [f'{vals[0]:.2f}s\n(mean†)', f'{vals[1]:.2f}s\n(mean†)', f'{vals[2]:.2f}s\n(P90)']
+    for b, v, lbl in zip(bars, vals, annot_labels):
+        ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.05, lbl, ha='center', va='bottom', fontweight='bold', color='white', fontsize=11)
     ax.set_ylabel('E2E Latency (s)')
-    ax.set_title('Single Request: Mean E2E Latency', fontweight='bold', color='#ffd700')
+    ax.set_title('Single Request: E2E Latency (P90 where available)', fontweight='bold', color='#ffd700')
     ax.grid(True, axis='y')
     ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
     ax.legend(facecolor='#16213e', edgecolor='#444')
 
-    # Panel 3: Burst 20 TTFT (from burst arrays, N=20 index)
+    # Panel 3: Burst 20 E2E — P90 for MaaS, mean for GPU/TPU
     ax = axes[1,0]
-    vals = [rtx_burst[6][3], tpu_burst[6][1], maas_burst[6][1]]
+    gpu_b20_e2e = calc_e2e(rtx_burst[6][3], rtx_burst[6][4]) / 1000
+    tpu_b20_e2e = calc_e2e(tpu_burst[6][1], tpu_burst[6][4]) / 1000
+    maas_b20_p90 = maas_burst[6][7]  # P90 E2E
+    vals = [gpu_b20_e2e, tpu_b20_e2e, maas_b20_p90]
     bars = ax.bar(labels, vals, color=colors, alpha=0.85, edgecolor='white', linewidth=0.5, width=0.6)
-    for b, v in zip(bars, vals):
-        ax.text(b.get_x()+b.get_width()/2, b.get_height()+200, f'{v/1000:.1f}s', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
-    ax.set_ylabel('Mean TTFT (ms)')
-    ax.set_title('Burst 20: Mean TTFT', fontweight='bold', color='#ffd700')
+    annot_labels = [f'{vals[0]:.1f}s\n(mean†)', f'{vals[1]:.1f}s\n(mean†)', f'{vals[2]:.1f}s\n(P90)']
+    for b, v, lbl in zip(bars, vals, annot_labels):
+        ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.15, lbl, ha='center', va='bottom', fontweight='bold', color='white', fontsize=11)
+    ax.set_ylabel('E2E Latency (s)')
+    ax.set_title('Burst 20: E2E Latency (P90 where available)', fontweight='bold', color='#ffd700')
+    ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
+    ax.legend(facecolor='#16213e', edgecolor='#444')
     ax.grid(True, axis='y')
 
-    # Panel 4: Burst TTFT comparison curve (GPU, TPU, MaaS only)
+    # Panel 4: Burst E2E sweep — mean for GPU/TPU, P90 for MaaS
     ax = axes[1,1]
-    rtx_burst_ttft = [d[3] for d in rtx_burst]
     rtx_burst_n = [d[0] for d in rtx_burst]
-    ax.plot(rtx_burst_n, [t/1000 for t in rtx_burst_ttft], 's-', color='#00ff88', linewidth=2, markersize=8, label='GPU (RTX)')
+    rtx_burst_e2e = [calc_e2e(d[3], d[4])/1000 for d in rtx_burst]
+    ax.plot(rtx_burst_n, rtx_burst_e2e, 's-', color='#00ff88', linewidth=2, markersize=8, label='GPU mean E2E')
     tpu_bn = [d[0] for d in tpu_burst]
-    tpu_bt = [d[1]/1000 for d in tpu_burst]
-    ax.plot(tpu_bn, tpu_bt, 'D-', color='#ff6b6b', linewidth=2, markersize=8, label='TPU v6e-8', zorder=4)
+    tpu_be2e = [calc_e2e(d[1], d[4])/1000 for d in tpu_burst]
+    ax.plot(tpu_bn, tpu_be2e, 'D-', color='#ff6b6b', linewidth=2, markersize=8, label='TPU mean E2E', zorder=4)
+    # MaaS: show both mean and P90
     maas_burst_n = [d[0] for d in maas_burst]
-    maas_burst_ttft = [d[1] for d in maas_burst]
-    ax.plot(maas_burst_n, [t/1000 for t in maas_burst_ttft], '^-', color='#bb86fc', linewidth=2, markersize=8, label='Vertex AI MaaS')
+    maas_burst_mean = [d[4] for d in maas_burst]
+    maas_burst_p90 = [d[7] for d in maas_burst if d[7] > 0]
+    maas_burst_n_p90 = [d[0] for d in maas_burst if d[7] > 0]
+    ax.plot(maas_burst_n, maas_burst_mean, '^--', color='#bb86fc', linewidth=1.5, markersize=7, alpha=0.5, label='MaaS mean E2E')
+    ax.plot(maas_burst_n_p90, maas_burst_p90, '^-', color='#bb86fc', linewidth=2.5, markersize=9, label='MaaS P90 E2E', zorder=5)
+    ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
     ax.set_xlabel('Burst Size (N concurrent)', color='#ccc')
-    ax.set_ylabel('Mean TTFT (s)')
-    ax.set_title('Burst Sweep: TTFT Comparison', fontweight='bold', color='#ffd700')
-    ax.legend(facecolor='#16213e', edgecolor='#444')
+    ax.set_ylabel('E2E Latency (s)')
+    ax.set_title('Burst Sweep: E2E Latency (P90 for MaaS)', fontweight='bold', color='#ffd700')
+    ax.legend(facecolor='#16213e', edgecolor='#444', fontsize=8)
     ax.grid(True)
 
     plt.tight_layout(rect=[0, 0, 1, 0.94])
@@ -534,17 +558,17 @@ def plot_10():
     col_labels = ['Metric', 'GPU (RTX Pro 6000)', 'TPU v6e-8 (vLLM)', 'Vertex AI MaaS', 'Winner']
     table_data = [
         ['-- Single Request --', '', '', '', ''],
-        ['TTFT (ms)', '1,009', '821 (87 steady)', '491', 'MaaS'],
-        ['TPOT (ms)', '9.27', '8.60', 'N/A*', 'TPU'],
-        ['E2E Latency (s)', '3.32', '2.97', '0.80', 'MaaS'],
-        ['-- 0.3 QPS (cold) --', '', '', '', ''],
-        ['Mean TTFT (ms)', '⚠️1,009*', '93', '680', 'TPU'],
-        ['Est. E2E (s)', '⚠️3.61*', '2.28', '1.00', 'MaaS'],
+        ['Mean TTFT (ms)', f'{rtx_baseline["ttft_ms"]:,.0f}', f'{tpu_baseline["ttft_ms"]:,.0f}', f'{maas_baseline["ttft_mean_ms"]:,.0f}', 'MaaS'],
+        ['Mean E2E (s)', f'{rtx_baseline["e2e_s"]:.2f}', f'{calc_e2e(tpu_baseline["ttft_ms"], tpu_baseline["tpot_ms"])/1000:.2f}', f'{maas_baseline["e2e_mean_s"]:.2f}', 'MaaS'],
+        ['P90 E2E (s)', 'N/A†', 'N/A†', f'{maas_baseline["e2e_p90_s"]:.2f}', 'MaaS'],
+        ['-- 0.3 QPS Steady --', '', '', '', ''],
+        ['Mean TTFT (ms)', f'{rtx_qps[4][3]:,.0f}', f'{tpu_qps[4][1]:,.0f}', f'{maas_qps[4][1]:,.0f}', 'TPU'],
+        ['Mean E2E (s)', f'{calc_e2e(rtx_qps[4][3], rtx_qps[4][4])/1000:.2f}', f'{calc_e2e(tpu_qps[4][1], tpu_qps[4][4])/1000:.2f}', f'{maas_qps[4][4]:.2f}', 'TPU'],
+        ['P90 E2E (s)', 'N/A†', 'N/A†', f'{maas_qps[4][7]:.2f}', 'MaaS'],
         ['-- Burst 20 --', '', '', '', ''],
-        ['Mean TTFT (ms)', '4,651', '1,686', '3,091', 'TPU'],
-        ['Mean TPOT (ms)', '15.23', '26.59', 'N/A*', 'GPU'],
-        ['Output tok/s', '323.9', 'N/A', '~4.99 req/s', 'GPU'],
-        ['Mean E2E (s)', '8.44', '8.31', '3.42', 'MaaS'],
+        ['Mean TTFT (ms)', f'{rtx_burst[6][3]:,.0f}', f'{tpu_burst[6][1]:,.0f}', f'{maas_burst[6][1]:,.0f}', 'TPU'],
+        ['Mean E2E (s)', f'{calc_e2e(rtx_burst[6][3], rtx_burst[6][4])/1000:.2f}', f'{calc_e2e(tpu_burst[6][1], tpu_burst[6][4])/1000:.2f}', f'{maas_burst[6][4]:.2f}', 'TPU'],
+        ['P90 E2E (s)', 'N/A†', 'N/A†', f'{maas_burst[6][7]:.2f}', '—'],
         ['-- Cost --', '', '', '', ''],
         ['On-demand ($/hr)', '$4.50', '$21.60', 'Pay-per-token', 'GPU'],
         ['Cost/M out tokens', '$16.58', '$71.07', '$12.60**', 'MaaS'],
@@ -602,25 +626,31 @@ def plot_14():
     ax.legend(facecolor='#16213e', edgecolor='#444')
     ax.grid(True)
 
-    # QPS sweep E2E latency
+    # QPS sweep E2E latency (mean + P90)
     ax = axes[0,1]
     maas_lat = [d[4] for d in maas_qps]
-    ax.plot(qps_rates, maas_lat, 'o-', color='#bb86fc', linewidth=2.5, markersize=8, label='MaaS')
+    maas_lat_p90 = [d[7] for d in maas_qps]
+    ax.plot(qps_rates, maas_lat, 'o--', color='#bb86fc', linewidth=1.5, markersize=7, alpha=0.5, label='Mean E2E')
+    ax.plot(qps_rates, maas_lat_p90, 'o-', color='#bb86fc', linewidth=2.5, markersize=8, label='P90 E2E')
     ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
     ax.set_xlabel('Request Rate (QPS)')
-    ax.set_ylabel('Mean E2E Latency (s)')
-    ax.set_title('QPS Sweep: E2E Latency', fontweight='bold', color='#ffd700')
+    ax.set_ylabel('E2E Latency (s)')
+    ax.set_title('QPS Sweep: E2E Latency (Mean & P90)', fontweight='bold', color='#ffd700')
     ax.legend(facecolor='#16213e', edgecolor='#444')
     ax.grid(True)
 
-    # Burst TTFT
+    # Burst E2E (mean + P90)
     ax = axes[1,0]
     burst_n = [d[0] for d in maas_burst]
-    burst_ttft = [d[1] for d in maas_burst]
-    ax.plot(burst_n, [t/1000 for t in burst_ttft], 'o-', color='#bb86fc', linewidth=2.5, markersize=8, label='MaaS')
+    burst_mean = [d[4] for d in maas_burst]
+    burst_p90 = [d[7] for d in maas_burst if d[7] > 0]
+    burst_n_p90 = [d[0] for d in maas_burst if d[7] > 0]
+    ax.plot(burst_n, burst_mean, 'o--', color='#bb86fc', linewidth=1.5, markersize=7, alpha=0.5, label='Mean E2E')
+    ax.plot(burst_n_p90, burst_p90, 'o-', color='#bb86fc', linewidth=2.5, markersize=8, label='P90 E2E')
+    ax.axhline(y=3.5, color='#ff6b6b', linestyle='--', alpha=0.3, label='3.5s target')
     ax.set_xlabel('Burst Size (N concurrent)')
-    ax.set_ylabel('Mean TTFT (s)')
-    ax.set_title('Burst Sweep: TTFT vs Concurrency', fontweight='bold', color='#ffd700')
+    ax.set_ylabel('E2E Latency (s)')
+    ax.set_title('Burst Sweep: E2E Latency (Mean & P90)', fontweight='bold', color='#ffd700')
     ax.legend(facecolor='#16213e', edgecolor='#444')
     ax.grid(True)
 
