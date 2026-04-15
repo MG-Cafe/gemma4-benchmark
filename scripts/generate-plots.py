@@ -518,7 +518,7 @@ def plot_10():
         ['P90 E2E (s)', f'{gpu_p90_burst[6]:.2f}', f'{tpu_p90_burst[6]:.2f}', f'{maas_burst[6][7]:.2f}', 'MaaS'],
         ['-- Cost --', '', '', '', ''],
         ['On-demand ($/hr)', '$18.00', '$10.80', 'Pay-per-token', 'TPU'],
-        ['Cost/M out tokens', '$65.32', '$35.54', '$12.60**', 'MaaS'],
+        ['Cost/M out tokens', '$65.32', '$21.69', '$12.60**', 'MaaS'],
     ]
     cell_colors = []
     for row in table_data:

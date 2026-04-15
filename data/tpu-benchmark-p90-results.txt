@@ -1,148 +1,152 @@
 ======================================================================
-TPU v6e-8 Benchmark - P90 E2E (128K context, BF16)
-Input: ~20000 tokens, Output: 250 tokens
+TPU v6e-4 Benchmark - P90 E2E (128K context, BF16)
+Input: ~20000 tokens (UNIQUE RANDOM per request), Output: 250 tokens
+NOTE: Each request uses a fresh random prompt to prevent prefix caching
 ======================================================================
 
 Server OK, models: ['google/gemma-4-26B-A4B-it']
 
-Warmup...
-  status=True time=1.33s tokens=108
+Warmup (unique prompt, result discarded)...
+  status=True time=2.13s tokens=190
 
->>> PHASE 1: Single Request (10 runs, fresh prompts)
-  Run 1/10: E2E=0.237s  TTFT=65.0ms  TPOT=6.38ms
-  Run 2/10: E2E=0.232s  TTFT=59.5ms  TPOT=6.38ms
-  Run 3/10: E2E=0.233s  TTFT=60.0ms  TPOT=6.42ms
-  Run 4/10: E2E=0.233s  TTFT=59.9ms  TPOT=6.42ms
-  Run 5/10: E2E=0.231s  TTFT=59.3ms  TPOT=6.35ms
-  Run 6/10: E2E=0.232s  TTFT=59.6ms  TPOT=6.38ms
-  Run 7/10: E2E=0.233s  TTFT=59.6ms  TPOT=6.44ms
-  Run 8/10: E2E=0.234s  TTFT=60.0ms  TPOT=6.43ms
-  Run 9/10: E2E=0.234s  TTFT=59.4ms  TPOT=6.47ms
-  Run 10/10: E2E=0.235s  TTFT=59.8ms  TPOT=6.50ms
+>>> PHASE 1: Single Request (10 runs, UNIQUE random prompts each)
+  Run 1/10: E2E=2.113s  TTFT=710.8ms  TPOT=7.27ms
+  Run 2/10: E2E=2.503s  TTFT=706.8ms  TPOT=7.21ms
+  Run 3/10: E2E=1.918s  TTFT=705.2ms  TPOT=7.26ms
+  Run 4/10: E2E=1.190s  TTFT=705.2ms  TPOT=7.13ms
+  Run 5/10: E2E=1.764s  TTFT=704.3ms  TPOT=7.26ms
+  Run 6/10: E2E=1.382s  TTFT=705.0ms  TPOT=7.21ms
+  Run 7/10: E2E=2.501s  TTFT=704.5ms  TPOT=7.22ms
+  Run 8/10: E2E=2.525s  TTFT=705.4ms  TPOT=7.31ms
+  Run 9/10: E2E=2.495s  TTFT=705.6ms  TPOT=7.18ms
+  Run 10/10: E2E=2.523s  TTFT=706.5ms  TPOT=7.30ms
 
   ===== SINGLE REQUEST (10 runs) =====
   Requests: 10
-  E2E:  mean=0.233s  med=0.233s  P90=0.236s  P99=0.237s  min=0.231s  max=0.237s
-  TTFT: mean=60.2ms  med=59.7ms  P90=60.5ms  P99=64.6ms
-  TPOT: mean=6.42ms  med=6.42ms  P90=6.47ms
+  E2E:  mean=2.091s  med=2.304s  P90=2.523s  P99=2.525s  min=1.190s  max=2.525s
+  TTFT: mean=705.9ms  med=705.3ms  P90=707.2ms  P99=710.5ms
+  TPOT: mean=7.23ms  med=7.24ms  P90=7.30ms
 
->>> PHASE 2: QPS Sweep
+>>> PHASE 2: QPS Sweep (UNIQUE random prompts per request)
 
   ===== QPS=0.1 =====
   Requests: 10
-  E2E:  mean=0.242s  med=0.242s  P90=0.246s  P99=0.248s  min=0.234s  max=0.248s
-  TTFT: mean=61.9ms  med=62.0ms  P90=62.4ms  P99=62.9ms
-  TPOT: mean=6.68ms  med=6.67ms  P90=6.83ms
+  E2E:  mean=2.081s  med=2.081s  P90=2.525s  P99=2.525s  min=2.081s  max=2.525s
+  TTFT: mean=706.6ms  med=706.6ms  P90=707.5ms  P99=707.5ms
+  TPOT: mean=7.27ms  med=7.27ms  P90=7.30ms
 
   ===== QPS=0.15 =====
   Requests: 10
-  E2E:  mean=0.246s  med=0.246s  P90=0.247s  P99=0.248s  min=0.241s  max=0.248s
-  TTFT: mean=61.6ms  med=61.8ms  P90=62.2ms  P99=62.3ms
-  TPOT: mean=6.81ms  med=6.83ms  P90=6.85ms
+  E2E:  mean=2.191s  med=2.191s  P90=2.498s  P99=2.518s  min=2.191s  max=2.518s
+  TTFT: mean=706.4ms  med=706.4ms  P90=707.3ms  P99=707.3ms
+  TPOT: mean=7.27ms  med=7.27ms  P90=7.30ms
 
   ===== QPS=0.2 =====
   Requests: 10
-  E2E:  mean=0.244s  med=0.244s  P90=0.246s  P99=0.247s  min=0.240s  max=0.247s
-  TTFT: mean=61.8ms  med=61.6ms  P90=62.7ms  P99=64.1ms
-  TPOT: mean=6.74ms  med=6.75ms  P90=6.83ms
+  E2E:  mean=1.976s  med=2.039s  P90=2.515s  P99=2.518s  min=1.198s  max=2.519s
+  TTFT: mean=706.2ms  med=706.0ms  P90=707.5ms  P99=707.7ms
+  TPOT: mean=7.25ms  med=7.26ms  P90=7.29ms
 
   ===== QPS=0.25 =====
   Requests: 10
-  E2E:  mean=0.242s  med=0.242s  P90=0.243s  P99=0.245s  min=0.241s  max=0.245s
-  TTFT: mean=61.4ms  med=61.4ms  P90=61.6ms  P99=61.9ms
-  TPOT: mean=6.71ms  med=6.69ms  P90=6.74ms
+  E2E:  mean=2.410s  med=2.512s  P90=2.526s  P99=2.527s  min=1.862s  max=2.527s
+  TTFT: mean=706.6ms  med=706.7ms  P90=707.1ms  P99=707.2ms
+  TPOT: mean=7.26ms  med=7.27ms  P90=7.30ms
 
   ===== QPS=0.3 =====
   Requests: 10
-  E2E:  mean=0.241s  med=0.240s  P90=0.243s  P99=0.244s  min=0.239s  max=0.244s
-  TTFT: mean=61.1ms  med=61.0ms  P90=61.9ms  P99=62.0ms
-  TPOT: mean=6.65ms  med=6.65ms  P90=6.69ms
+  E2E:  mean=2.143s  med=2.249s  P90=2.523s  P99=2.524s  min=1.310s  max=2.525s
+  TTFT: mean=706.3ms  med=706.3ms  P90=706.8ms  P99=707.3ms
+  TPOT: mean=7.25ms  med=7.27ms  P90=7.30ms
 
   ===== QPS=0.4 =====
   Requests: 10
-  E2E:  mean=0.242s  med=0.242s  P90=0.244s  P99=0.245s  min=0.240s  max=0.245s
-  TTFT: mean=61.1ms  med=61.2ms  P90=61.7ms  P99=61.8ms
-  TPOT: mean=6.70ms  med=6.71ms  P90=6.76ms
+  E2E:  mean=2.223s  med=2.223s  P90=2.525s  P99=2.525s  min=2.223s  max=2.525s
+  TTFT: mean=705.9ms  med=705.9ms  P90=706.7ms  P99=706.7ms
+  TPOT: mean=7.27ms  med=7.27ms  P90=7.30ms
 
   ===== QPS=0.5 =====
   Requests: 10
-  E2E:  mean=0.241s  med=0.240s  P90=0.243s  P99=0.246s  min=0.238s  max=0.246s
-  TTFT: mean=60.9ms  med=60.9ms  P90=61.3ms  P99=61.3ms
-  TPOT: mean=6.66ms  med=6.63ms  P90=6.75ms
+  E2E:  mean=2.534s  med=2.534s  P90=3.148s  P99=3.159s  min=2.534s  max=3.159s
+  TTFT: mean=712.1ms  med=712.1ms  P90=718.2ms  P99=718.2ms
+  TPOT: mean=8.87ms  med=8.87ms  P90=9.87ms
 
   ===== QPS=0.7 =====
   Requests: 10
-  E2E:  mean=0.241s  med=0.241s  P90=0.242s  P99=0.243s  min=0.239s  max=0.243s
-  TTFT: mean=60.9ms  med=60.9ms  P90=61.4ms  P99=61.8ms
-  TPOT: mean=6.67ms  med=6.66ms  P90=6.71ms
+  E2E:  mean=2.778s  med=2.778s  P90=3.761s  P99=3.817s  min=2.778s  max=3.817s
+  TTFT: mean=714.7ms  med=714.7ms  P90=718.7ms  P99=718.7ms
+  TPOT: mean=10.95ms  med=10.95ms  P90=12.45ms
 
   ===== QPS=1.0 =====
   Requests: 10
-  E2E:  mean=0.242s  med=0.242s  P90=0.244s  P99=0.247s  min=0.239s  max=0.247s
-  TTFT: mean=60.8ms  med=60.8ms  P90=61.1ms  P99=61.1ms
-  TPOT: mean=6.71ms  med=6.70ms  P90=6.79ms
+  E2E:  mean=4.361s  med=4.361s  P90=5.152s  P99=5.721s  min=4.361s  max=5.721s
+  TTFT: mean=725.3ms  med=725.3ms  P90=733.0ms  P99=733.0ms
+  TPOT: mean=16.76ms  med=16.76ms  P90=19.83ms
 
->>> PHASE 3: Burst Sweep
+>>> PHASE 3: Burst Sweep (UNIQUE random prompts per request)
 
   ===== BURST N=1 =====
   Requests: 1
-  E2E:  mean=0.240s  med=0.240s  P90=0.240s  P99=0.240s  min=0.240s  max=0.240s
-  TTFT: mean=61.1ms  med=61.1ms  P90=61.1ms  P99=61.1ms
-  TPOT: mean=6.62ms  med=6.62ms  P90=6.62ms
+  E2E:  mean=2.496s  med=2.496s  P90=2.496s  P99=2.496s  min=2.496s  max=2.496s
+  TTFT: mean=704.1ms  med=704.1ms  P90=704.1ms  P99=704.1ms
+  TPOT: mean=7.20ms  med=7.20ms  P90=7.20ms
 
   ===== BURST N=2 =====
   Requests: 2
-  E2E:  mean=0.269s  med=0.269s  P90=0.272s  P99=0.273s  min=0.266s  max=0.273s
-  TTFT: mean=94.3ms  med=94.3ms  P90=98.5ms  P99=99.4ms
-  TPOT: mean=6.74ms  med=6.74ms  P90=6.80ms
+  E2E:  mean=3.229s  med=3.229s  P90=3.256s  P99=3.262s  min=3.229s  max=3.262s
+  TTFT: mean=1066.2ms  med=1066.2ms  P90=1319.7ms  P99=1319.7ms
+  TPOT: mean=8.69ms  med=8.69ms  P90=9.59ms
 
   ===== BURST N=5 =====
   Requests: 5
-  E2E:  mean=0.469s  med=0.362s  P90=0.748s  P99=0.979s  min=0.307s  max=1.005s
-  TTFT: mean=163.9ms  med=145.7ms  P90=193.3ms  P99=194.0ms
-  TPOT: mean=7.15ms  med=7.35ms  P90=7.42ms
+  E2E:  mean=4.578s  med=4.578s  P90=5.184s  P99=5.238s  min=4.578s  max=5.238s
+  TTFT: mean=2015.6ms  med=2015.6ms  P90=3013.5ms  P99=3013.5ms
+  TPOT: mean=14.36ms  med=14.36ms  P90=17.74ms
 
   ===== BURST N=8 =====
   Requests: 8
-  E2E:  mean=0.593s  med=0.449s  P90=1.142s  P99=1.145s  min=0.330s  max=1.146s
-  TTFT: mean=267.0ms  med=321.9ms  P90=326.1ms  P99=327.0ms
-  TPOT: mean=7.83ms  med=6.92ms  P90=10.83ms
+  E2E:  mean=6.901s  med=6.969s  P90=7.363s  P99=7.413s  min=6.146s  max=7.418s
+  TTFT: mean=2920.3ms  med=2915.7ms  P90=4693.1ms  P99=5086.5ms
+  TPOT: mean=18.73ms  med=20.54ms  P90=25.02ms
 
   ===== BURST N=10 =====
   Requests: 10
-  E2E:  mean=0.655s  med=0.582s  P90=1.155s  P99=1.260s  min=0.450s  max=1.272s
-  TTFT: mean=325.6ms  med=332.2ms  P90=441.5ms  P99=442.3ms
-  TPOT: mean=10.37ms  med=7.75ms  P90=16.25ms
+  E2E:  mean=8.091s  med=8.100s  P90=8.640s  P99=9.096s  min=6.638s  max=9.147s
+  TTFT: mean=3603.3ms  med=3525.0ms  P90=5915.2ms  P99=6767.2ms
+  TPOT: mean=22.88ms  med=22.05ms  P90=32.71ms
 
   ===== BURST N=15 =====
   Requests: 15
-  E2E:  mean=0.773s  med=0.660s  P90=1.364s  P99=1.369s  min=0.247s  max=1.370s
-  TTFT: mean=514.2ms  med=573.9ms  P90=580.7ms  P99=582.4ms
-  TPOT: mean=8.81ms  med=6.90ms  P90=15.80ms
+  E2E:  mean=11.148s  med=11.606s  P90=13.219s  P99=13.486s  min=7.080s  max=13.515s
+  TTFT: mean=5733.4ms  med=5199.0ms  P90=10333.5ms  P99=11325.6ms
+  TPOT: mean=25.15ms  med=26.05ms  P90=35.35ms
 
   ===== BURST N=20 =====
   Requests: 20
-  E2E:  mean=1.008s  med=0.939s  P90=1.566s  P99=1.665s  min=0.281s  max=1.665s
-  TTFT: mean=748.5ms  med=844.1ms  P90=853.2ms  P99=855.4ms
-  TPOT: mean=9.67ms  med=8.41ms  P90=10.63ms
+  E2E:  mean=13.554s  med=14.683s  P90=16.735s  P99=17.654s  min=7.350s  max=17.818s
+  TTFT: mean=7830.5ms  med=8125.5ms  P90=13431.5ms  P99=15320.7ms
+  TPOT: mean=27.34ms  med=28.39ms  P90=35.86ms
 
 ======================================================================
 SUMMARY - P90 E2E
 ======================================================================
-single_10runs         mean=0.233s  P90=0.236s  TTFT_mean=60.2ms  TPOT_mean=6.42ms
-qps_0.1               mean=0.242s  P90=0.246s  TTFT_mean=61.9ms  TPOT_mean=6.68ms
-qps_0.15              mean=0.246s  P90=0.247s  TTFT_mean=61.6ms  TPOT_mean=6.81ms
-qps_0.2               mean=0.244s  P90=0.246s  TTFT_mean=61.8ms  TPOT_mean=6.74ms
-qps_0.25              mean=0.242s  P90=0.243s  TTFT_mean=61.4ms  TPOT_mean=6.71ms
-qps_0.3               mean=0.241s  P90=0.243s  TTFT_mean=61.1ms  TPOT_mean=6.65ms
-qps_0.4               mean=0.242s  P90=0.244s  TTFT_mean=61.1ms  TPOT_mean=6.70ms
-qps_0.5               mean=0.241s  P90=0.243s  TTFT_mean=60.9ms  TPOT_mean=6.66ms
-qps_0.7               mean=0.241s  P90=0.242s  TTFT_mean=60.9ms  TPOT_mean=6.67ms
-qps_1.0               mean=0.242s  P90=0.244s  TTFT_mean=60.8ms  TPOT_mean=6.71ms
-burst_1               mean=0.240s  P90=0.240s  TTFT_mean=61.1ms  TPOT_mean=6.62ms
-burst_2               mean=0.269s  P90=0.272s  TTFT_mean=94.3ms  TPOT_mean=6.74ms
-burst_5               mean=0.469s  P90=0.748s  TTFT_mean=163.9ms  TPOT_mean=7.15ms
-burst_8               mean=0.593s  P90=1.142s  TTFT_mean=267.0ms  TPOT_mean=7.83ms
-burst_10              mean=0.655s  P90=1.155s  TTFT_mean=325.6ms  TPOT_mean=10.37ms
-burst_15              mean=0.773s  P90=1.364s  TTFT_mean=514.2ms  TPOT_mean=8.81ms
-burst_20              mean=1.008s  P90=1.566s  TTFT_mean=748.5ms  TPOT_mean=9.67ms
+single_10runs         mean=2.091s  P90=2.523s  TTFT_mean=705.9ms  TPOT_mean=7.23ms
+qps_0.1               mean=2.081s  P90=2.525s  TTFT_mean=706.6ms  TPOT_mean=7.27ms
+qps_0.15              mean=2.191s  P90=2.498s  TTFT_mean=706.4ms  TPOT_mean=7.27ms
+qps_0.2               mean=1.976s  P90=2.515s  TTFT_mean=706.2ms  TPOT_mean=7.25ms
+qps_0.25              mean=2.410s  P90=2.526s  TTFT_mean=706.6ms  TPOT_mean=7.26ms
+qps_0.3               mean=2.143s  P90=2.523s  TTFT_mean=706.3ms  TPOT_mean=7.25ms
+qps_0.4               mean=2.223s  P90=2.525s  TTFT_mean=705.9ms  TPOT_mean=7.27ms
+qps_0.5               mean=2.534s  P90=3.148s  TTFT_mean=712.1ms  TPOT_mean=8.87ms
+qps_0.7               mean=2.778s  P90=3.761s  TTFT_mean=714.7ms  TPOT_mean=10.95ms
+qps_1.0               mean=4.361s  P90=5.152s  TTFT_mean=725.3ms  TPOT_mean=16.76ms
+burst_1               mean=2.496s  P90=2.496s  TTFT_mean=704.1ms  TPOT_mean=7.20ms
+burst_2               mean=3.229s  P90=3.256s  TTFT_mean=1066.2ms  TPOT_mean=8.69ms
+burst_5               mean=4.578s  P90=5.184s  TTFT_mean=2015.6ms  TPOT_mean=14.36ms
+burst_8               mean=6.901s  P90=7.363s  TTFT_mean=2920.3ms  TPOT_mean=18.73ms
+burst_10              mean=8.091s  P90=8.640s  TTFT_mean=3603.3ms  TPOT_mean=22.88ms
+burst_15              mean=11.148s  P90=13.219s  TTFT_mean=5733.4ms  TPOT_mean=25.15ms
+burst_20              mean=13.554s  P90=16.735s  TTFT_mean=7830.5ms  TPOT_mean=27.34ms
+
+Results saved to /tmp/tpu-p90-results-128k.txt
+JSON saved to /tmp/tpu-p90-results-128k.json

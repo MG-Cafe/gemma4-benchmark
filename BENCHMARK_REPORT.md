@@ -3,8 +3,8 @@
 **Date**: April 2026  
 **Model**: `google/gemma-4-26B-A4B-it` (26B parameters, Mixture-of-Experts, ~4B active)  
 **Serving Engine**: vLLM 0.19.0  
-**Benchmark Tool**: `vllm bench serve` (GPU/TPU), custom Python script (Vertex AI)  
-**Workload**: ~20K random input tokens → 250 output tokens (low cache hit rate)  
+**Benchmark Tool**: custom Python script (GPU/TPU), custom Python script (Vertex AI)  
+**Workload**: ~20K random input tokens → 250 output tokens (unique random prompts per request)  
 **Customer Target**: ~3.5s P90 E2E latency  
 
 ---
@@ -13,7 +13,7 @@
 
 1. [Platform Specifications](#1-platform-specifications)
 2. [GPU Benchmark Results (4× RTX Pro 6000, TP=4)](#2-gpu-benchmark-results)
-3. [TPU Benchmark Results (v6e-8 Trillium)](#3-tpu-benchmark-results)
+3. [TPU Benchmark Results (v6e-4 Trillium)](#3-tpu-benchmark-results)
 4. [Vertex AI MaaS Results](#4-vertex-ai-maas-results)
 5. [3-Way Comparison](#5-3-way-comparison)
 6. [Scaling Analysis](#6-scaling-analysis)
@@ -40,18 +40,18 @@
 | GPU utilization | ~83% per GPU |
 | On-demand pricing | $18.00/hr ($4.50/GPU × 4) |
 
-### TPU: Cloud TPU v6e-8 (Trillium)
+### TPU: Cloud TPU v6e-4 (Trillium)
 
 | Spec | Value |
 |------|-------|
-| Accelerator | 8× Trillium chips |
-| Memory | 256 GB HBM total (32 GB/chip) |
+| Accelerator | 4× Trillium chips |
+| Memory | ~128 GB HBM total (32 GB/chip) |
 | Precision | BF16 (no quantization) |
-| Tensor Parallelism | 8 |
+| Tensor Parallelism | 4 |
 | Max Model Length | 128,000 tokens |
-| KV cache blocks | 8,888 per layer (30 layers) |
+| Flash Attention | VLLM_FLASH_ATTN=1 |
 | Docker image | `vllm/vllm-tpu:gemma4` |
-| On-demand pricing | $21.60/hr ($2.70/chip × 8) |
+| On-demand pricing | $10.80/hr ($2.70/chip × 4) |
 
 ### Vertex AI MaaS: Model-as-a-Service
 
@@ -135,61 +135,68 @@ vllm serve google/gemma-4-26B-A4B-it \
 
 ---
 
-## 3. TPU Benchmark Results (v6e-8 Trillium)
+## 3. TPU Benchmark Results (v6e-4 Trillium)
 
 ### vLLM Configuration
 
 ```bash
 # Docker: vllm/vllm-tpu:gemma4
+# Environment: VLLM_FLASH_ATTN=1
 # VLLM_ARGS:
 --model google/gemma-4-26B-A4B-it \
     --max-model-len 128000 \
-    --tensor-parallel-size 8 \
+    --tensor-parallel-size 4 \
     --disable_chunked_mm_input
 ```
 
-### Single Request Baseline (10 runs, 128K context, prefix caching ON)
+### ⚠️ Methodology: Unique Random Prompts (No Prefix Caching)
+
+Each request uses a **freshly generated unique random prompt** (~20K tokens) to prevent any prefix caching benefits. This ensures TTFT reflects real prefill computation cost, not cached lookups.
+
+### Single Request Baseline (10 runs, unique random prompts)
 
 | Metric | Value |
 |--------|-------|
-| TTFT | 60ms |
-| TPOT | 6.42ms |
-| Output throughput | 155.8 tok/s |
-| E2E (mean) | 0.233s |
-| E2E (P90) | **0.236s** |
-| **Within 3.5s target** | ✅ Yes (0.236s) |
+| TTFT | 706ms |
+| TPOT | 7.23ms |
+| Output throughput | 138.3 tok/s |
+| E2E (mean) | 2.09s |
+| E2E (P90) | **2.52s** |
+| **Within 3.5s target** | ✅ Yes (2.52s) |
 
-### QPS Sweep (10 prompts per rate, 128K context)
+### QPS Sweep (10 unique random prompts per rate)
 
-| Target QPS | Mean TTFT (ms) | Median TTFT (ms) | P99 TTFT (ms) | Mean TPOT (ms) | P90 E2E (s) |
-|-----------|----------------|-------------------|---------------|----------------|-------------|
-| 0.10 | 62 | 62 | 63 | 6.68 | 0.246 |
-| 0.15 | 62 | 62 | 62 | 6.81 | 0.247 |
-| 0.20 | 62 | 62 | 64 | 6.74 | 0.246 |
-| 0.25 | 61 | 61 | 62 | 6.71 | 0.243 |
-| 0.30 | 61 | 61 | 62 | 6.65 | 0.243 |
-| 0.40 | 61 | 61 | 62 | 6.70 | 0.244 |
-| 0.50 | 61 | 61 | 61 | 6.66 | 0.243 |
-| 0.70 | 61 | 61 | 62 | 6.67 | 0.242 |
-| 1.00 | 61 | 61 | 61 | 6.71 | 0.244 |
+| Target QPS | Mean TTFT (ms) | P90 TTFT (ms) | Mean TPOT (ms) | P90 E2E (s) |
+|-----------|----------------|---------------|----------------|-------------|
+| 0.10 | 707 | 708 | 7.27 | 2.53 |
+| 0.15 | 706 | 707 | 7.27 | 2.50 |
+| 0.20 | 706 | 707 | 7.25 | 2.52 |
+| 0.25 | 707 | 707 | 7.26 | 2.53 |
+| 0.30 | 706 | 707 | 7.25 | 2.52 |
+| 0.40 | 706 | 707 | 7.27 | 2.53 |
+| 0.50 | 712 | 718 | 8.87 | 3.15 |
+| 0.70 | 715 | 719 | 10.95 | 3.76 |
+| 1.00 | 725 | 733 | 16.76 | 5.15 |
 
-### Burst Sweep (all requests at once, 128K context)
+### Burst Sweep (all requests at once, unique random prompts)
 
-| N | Mean TTFT (ms) | Median TTFT (ms) | P99 TTFT (ms) | Mean TPOT (ms) | P90 E2E (s) |
-|---|----------------|-------------------|---------------|----------------|-------------|
-| 1 | 61 | 61 | 61 | 6.62 | 0.240 |
-| 2 | 94 | 94 | 99 | 6.74 | 0.272 |
-| 5 | 164 | 146 | 194 | 7.15 | 0.748 |
-| 8 | 267 | 322 | 327 | 7.83 | 1.142 |
-| 10 | 326 | 332 | 442 | 10.37 | 1.155 |
-| 15 | 514 | 574 | 582 | 8.81 | 1.364 |
-| 20 | 749 | 844 | 855 | 9.67 | 1.566 |
+| N | Mean TTFT (ms) | P90 TTFT (ms) | Mean TPOT (ms) | P90 E2E (s) |
+|---|----------------|---------------|----------------|-------------|
+| 1 | 704 | 704 | 7.20 | 2.50 |
+| 2 | 1,066 | 1,320 | 8.69 | 3.26 |
+| 5 | 2,016 | 3,014 | 14.36 | 5.18 |
+| 8 | 2,920 | 4,693 | 18.73 | 7.36 |
+| 10 | 3,603 | 5,915 | 22.88 | 8.64 |
+| 15 | 5,733 | 10,334 | 25.15 | 13.22 |
+| 20 | 7,831 | 13,432 | 27.34 | 16.74 |
 
 **Key observations:**
-- **TPOT stays flat at ~6.6-7.2ms up to N=5**, then gradually increases (max 10.37ms at N=10)
-- **Burst N=20 TTFT=749ms** — 14× faster than GPU's 10,851ms
-- Prefix caching on 256GB HBM delivers sub-second E2E latency for all single/QPS scenarios
-- **All scenarios within 3.5s P90 target** — TPU is the only platform that meets SLA everywhere
+- **TTFT ~706ms baseline** — real prefill cost for ~20K unique random tokens on 4 Trillium chips
+- **TPOT stays excellent at low concurrency**: 7.2ms (N=1) → 8.7ms (N=2), competitive with GPU
+- **TPOT degrades at high concurrency**: 14.4ms (N=5) → 27.3ms (N=20)
+- **Single request and low QPS (≤0.4) meet 3.5s target** — P90 E2E ~2.52s
+- **Burst N≥2 exceeds 3.5s target** — prefill queuing on 4 chips causes TTFT growth
+- **TPU wins single-request TTFT** vs GPU (706ms vs 1,108ms) — faster prefill per chip
 
 ---
 
@@ -254,25 +261,25 @@ vllm serve google/gemma-4-26B-A4B-it \
 
 ### Head-to-Head: P90 E2E Latency (Customer's Primary Metric)
 
-| Scenario | GPU (4×RTX TP=4) | TPU v6e-8 | MaaS | Winner |
+| Scenario | GPU (4×RTX TP=4) | TPU v6e-4 | MaaS | Winner |
 |----------|------------------|-----------|------|--------|
-| **Single request** | 3.31s | **0.24s** ✅ | 3.09s ✅ | **TPU** |
-| **0.3 QPS steady** | 5.04s | **0.24s** ✅ | 3.08s ✅ | **TPU** |
-| **Burst N=10** | 5.11s | **1.16s** ✅ | 6.11s | **TPU** |
-| **Burst N=20** | 21.65s | **1.57s** ✅ | 8.22s | **TPU** |
+| **Single request** | 3.31s | **2.52s** ✅ | 3.09s ✅ | **TPU** |
+| **0.3 QPS steady** | 5.04s | **2.52s** ✅ | 3.08s ✅ | **TPU** |
+| **Burst N=10** | 5.11s | 8.64s | **6.11s** | **MaaS** |
+| **Burst N=20** | 21.65s | 16.74s | **8.22s** | **MaaS** |
 
 ### Head-to-Head: Latency Components
 
-| Metric | GPU (4×RTX TP=4) | TPU v6e-8 | MaaS |
+| Metric | GPU (4×RTX TP=4) | TPU v6e-4 | MaaS |
 |--------|------------------|-----------|------|
-| **Single TTFT** | 1,108ms | **60ms** | 1,330ms |
-| **Single TPOT** | 8.83ms | **6.42ms** | 6.34ms |
-| **0.3 QPS TTFT** | 1,106ms | **61ms** | 1,292ms |
-| **0.3 QPS TPOT** | 13.66ms | **6.65ms** | N/A† |
-| **Burst N=20 TTFT** | 10,851ms | **749ms** | 4,201ms |
-| **Burst N=20 TPOT** | 43.23ms | **9.67ms** | N/A† |
-| **Peak throughput** | **489.7 tok/s** (N=10) | ~155.8 tok/s | ~3.3 req/s |
-| **On-demand Cost** | **$18.00/hr** | $21.60/hr | Pay-per-token |
+| **Single TTFT** | 1,108ms | **706ms** | 1,330ms |
+| **Single TPOT** | 8.83ms | **7.23ms** | 6.34ms |
+| **0.3 QPS TTFT** | 1,106ms | **706ms** | 1,292ms |
+| **0.3 QPS TPOT** | 13.66ms | **7.25ms** | N/A† |
+| **Burst N=20 TTFT** | 10,851ms | 7,831ms | **4,201ms** |
+| **Burst N=20 TPOT** | 43.23ms | **27.34ms** | N/A† |
+| **Peak throughput** | **489.7 tok/s** (N=10) | ~138.3 tok/s | ~3.3 req/s |
+| **On-demand Cost** | $18.00/hr | **$10.80/hr** | Pay-per-token |
 
 > † Managed APIs: per-token timing (TPOT) not measurable
 
@@ -285,10 +292,10 @@ vllm serve google/gemma-4-26B-A4B-it \
 | Platform | Cost/M output tokens | Notes |
 |----------|---------------------|-------|
 | **MaaS** | **$12.60** | $0.15/M input + $0.60/M output (at 20K:250 ratio) |
+| TPU v6e-4 | $21.69 | $10.80/hr ÷ 497,880 tok/hr (138.3 tok/s) |
 | GPU 4×RTX TP=4 | $65.32 | $18.00/hr ÷ 275,612 tok/hr (76.7 tok/s) |
-| TPU v6e-8 | $41.38 | $21.60/hr ÷ 522,000 tok/hr (145.0 tok/s) |
 
-> MaaS is cheapest per output token. TPU beats GPU on cost-per-token due to higher throughput (145 vs 76.7 tok/s) despite higher hourly rate.
+> MaaS is cheapest per output token. TPU v6e-4 beats GPU on cost-per-token ($21.69 vs $65.32) due to both lower hourly rate and higher single-request throughput (138.3 vs 76.7 tok/s).
 
 ---
 
@@ -298,12 +305,12 @@ vllm serve google/gemma-4-26B-A4B-it \
 
 | Use Case | Recommended | Why |
 |----------|-------------|-----|
-| **Lowest latency everywhere** | TPU v6e-8 | 0.24s single, 0.24s QPS, 1.57s burst N=20 — wins all scenarios |
-| **Best P90 under sustained load** | TPU v6e-8 | 0.24s at 0.3 QPS — orders of magnitude faster than GPU/MaaS |
-| **Best burst P90 (N=20)** | TPU v6e-8 | 1.57s vs MaaS 8.22s vs GPU 21.65s |
-| **Best burst TTFT (prefill)** | TPU v6e-8 | 749ms at N=20 vs GPU 10,851ms (14× faster) |
-| **Best single-request TTFT** | TPU v6e-8 | 60ms (prefix caching eliminates prefill) |
-| **Lowest cost per output token** | MaaS | $12.60/M vs TPU $41.38/M vs GPU $65.32/M |
+| **Lowest single-request latency** | TPU v6e-4 | 2.52s P90 E2E — best of all platforms |
+| **Best P90 under low QPS (≤0.4)** | TPU v6e-4 | 2.52s at 0.3 QPS — beats MaaS (3.08s) and GPU (5.04s) |
+| **Best single-request TTFT** | TPU v6e-4 | 706ms (unique random prompts, no caching) vs GPU 1,108ms |
+| **Best burst performance (N≥5)** | MaaS | 4.20s at N=5, 8.22s at N=20 — auto-scaling handles burst |
+| **Lowest cost per output token** | MaaS | $12.60/M vs TPU $21.69/M vs GPU $65.32/M |
+| **Lowest hourly cost** | TPU v6e-4 | $10.80/hr vs GPU $18.00/hr |
 | **Zero infrastructure** | MaaS | Fully managed, auto-scales |
 
 ### 3.5s P90 E2E Target Assessment
@@ -311,26 +318,26 @@ vllm serve google/gemma-4-26B-A4B-it \
 | Platform | Single Request | 0.3 QPS Sustained | Burst N=20 | Verdict |
 |----------|---------------|-------------------|------------|---------|
 | GPU (4×RTX TP=4) | 3.31s ✅ | 5.04s ❌ | 21.65s ❌ | **Single ✅, sustained ❌, burst ❌** |
-| TPU v6e-8 | **0.24s ✅** | **0.24s ✅** | **1.57s ✅** | **✅ All scenarios pass** |
+| TPU v6e-4 | **2.52s ✅** | **2.52s ✅** | 16.74s ❌ | **Single ✅, sustained ✅, burst ❌** |
 | MaaS | **3.09s ✅** | **3.08s ✅** | 8.22s ❌ | **Single ✅, sustained ✅, burst ❌** |
 
-> **TPU v6e-8 is the only platform that meets the 3.5s P90 E2E target in ALL scenarios** — single request, sustained QPS, and burst N=20. This is enabled by vLLM's prefix caching on 256GB HBM, which effectively eliminates prefill latency for repeated prompts.
+> **No platform meets 3.5s P90 E2E at burst N=20.** For single request and sustained low QPS, TPU v6e-4 delivers the best latency (2.52s). MaaS is a close second (3.08-3.09s) with the advantage of zero infrastructure and auto-scaling for burst. GPU meets the target only for single requests.
 
 ---
 
 ## 8. Caveats & Limitations
 
-### ⚠️ TPU max-model-len Mismatch
+### ⚠️ TPU Platform: v6e-4 (Not v6e-8)
 
-The TPU benchmark uses `--max-model-len 128000`, matching the customer's production config requirement of **128,000 tokens**. The v6e-8 with 256GB HBM successfully supports this full context length.
+This benchmark uses a **v6e-4** (4 Trillium chips, ~128GB HBM), not a v6e-8. A v6e-8 (8 chips, 256GB HBM) would likely show better burst performance due to doubled memory and compute. Results should not be extrapolated to v6e-8.
+
+### ⚠️ Unique Random Prompts (No Prefix Caching)
+
+All TPU benchmark requests use **unique random prompts** (~20K tokens each) to prevent prefix caching. This gives realistic TTFT numbers (706ms) reflecting actual prefill computation. With prefix caching enabled and repeated prompts, TTFT would be significantly lower.
 
 ### ⚠️ MaaS Uses Different Model Variant
 
 The MaaS endpoint uses `gemma-4-26b-a4b-it-maas`, which **may differ** from the self-hosted `google/gemma-4-26B-A4B-it` model. Performance characteristics may not be directly comparable.
-
-### ⚠️ TPU Burst N=30 Data Missing
-
-The raw TPU benchmark log was **truncated at N=20**. The N=30 burst data point was not captured.
 
 ### ⚠️ Customer vLLM Flags Not Used
 
@@ -352,7 +359,8 @@ The customer's production config includes flags not used in this benchmark:
 |----------|-------------|--------|
 | GPU (4×RTX TP=4) | `data/gpu-benchmark-results.txt` | ✅ Available |
 | GPU P90 JSON | `data/gpu-p90-results.json` | ✅ Available |
-| TPU v6e-8 | `data/tpu-benchmark-results.txt` | ✅ Available |
+| TPU v6e-4 | `data/tpu-benchmark-p90-results.txt` | ✅ Available (128K, unique random) |
 | TPU P90 JSON | `data/tpu-p90-results.json` | ✅ Available |
+| TPU P90 128K JSON | `data/tpu-p90-results-128k.json` | ✅ Available |
 | Vertex AI MaaS | `data/maas-benchmark-results.txt` | ✅ Available |
 | MaaS P90 JSON | `data/maas-p90-results.json` | ✅ Available |
