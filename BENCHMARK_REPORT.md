@@ -139,6 +139,90 @@ vllm bench serve --dataset-name random --random-input-len 20000 --random-output-
 
 ---
 
+## 2b. GPU Benchmark Results (4× RTX Pro 6000, TP=4)
+
+### vLLM Configuration
+
+```bash
+vllm serve google/gemma-4-26B-A4B-it \
+    --host 0.0.0.0 --port 8000 \
+    --dtype bfloat16 --quantization fp8 \
+    --gpu-memory-utilization 0.95 \
+    --max-model-len 128000 \
+    --max-num-batched-tokens 65536 \
+    --max-num-seqs 32 \
+    --enable-chunked-prefill \
+    --enable-prefix-caching \
+    --tensor-parallel-size 4 \
+    --trust-remote-code
+```
+
+> **Key difference**: 4 GPUs with TP=4 and `max_num_seqs=32` (vs 1 GPU with `max_num_seqs=8`)
+
+### Single Request Baseline (P90 from 10 cold runs)
+
+| Metric | 1×GPU Value | 4×GPU TP=4 Value | Speedup |
+|--------|-------------|------------------|---------|
+| TTFT | 5,730ms | **1,108ms** | **5.2×** |
+| TPOT | 9.81ms | 8.83ms | 1.1× |
+| E2E (mean) | 8.16s | **3.31s** | **2.5×** |
+| E2E (P90) | 8.33s | **3.31s** | **2.5×** |
+| Output tok/s | 75.4 | 76.7 | 1.0× |
+| **Within 3.5s target** | ❌ No | ✅ **Yes** | — |
+
+> TP=4 dramatically reduces TTFT (5.2× faster prefill) because 4 GPUs can parallelize the 20K-token prefill computation. TPOT is similar since decode is already fast on a single GPU.
+
+### QPS Sweep (10 prompts per rate, 10 fresh runs each — P90 E2E)
+
+| Target QPS | P90 E2E (s) | Mean TTFT (ms) | Mean TPOT (ms) | Output tok/s |
+|-----------|-------------|----------------|----------------|-------------|
+| 0.10 | 3.79 | 967 | 9.90 | 24.2 |
+| 0.15 | 4.11 | 1,033 | 10.64 | 35.8 |
+| 0.20 | 4.54 | 1,047 | 11.79 | 47.0 |
+| 0.25 | 4.67 | 1,067 | 12.65 | 57.9 |
+| 0.30 | 5.04 | 1,106 | 13.66 | 68.4 |
+| 0.40 | 5.45 | 1,210 | 14.87 | 88.4 |
+| 0.50 | 6.44 | 1,340 | 17.69 | 105.8 |
+| 0.70 | 7.67 | 1,565 | 20.68 | 138.7 |
+| 1.00 | 8.79 | 2,067 | 25.14 | 170.6 |
+
+> TP=4 TPOT degrades faster under QPS load (9.9→25.1ms vs 1-GPU's 9.8→11.9ms). This is because TP=4 with 32 max_num_seqs processes more concurrent requests, increasing per-token decode time.
+
+### Burst Sweep (all requests at once, 10 fresh runs each — P90 E2E)
+
+| N | P90 E2E (s) | Mean TTFT (ms) | Mean TPOT (ms) | Output tok/s |
+|---|-------------|----------------|----------------|-------------|
+| 1 | 3.16 | 536 | 8.69 | 95.4 |
+| 2 | 3.48 | 592 | 9.73 | 169.7 |
+| 5 | 5.57 | 1,797 | 11.91 | 283.3 |
+| 8 | 5.68 | 1,972 | 14.75 | 351.0 |
+| 10 | 5.11 | 1,589 | 13.84 | 489.7 |
+| 15 | 16.65 | 3,763 | 24.89 | 405.0 |
+| 20 | 21.65 | 10,851 | 43.23 | 230.9 |
+| 30 | 31.28 | 15,542 | 62.91 | 239.9 |
+
+**Key observations:**
+- **Peak throughput at N=10** (489.7 tok/s) — significantly higher than 1-GPU (266.5 tok/s at N=10)
+- **N=1-2 within 3.5s target** (3.16s and 3.48s P90 E2E)
+- **TTFT stays low through N=2** (592ms) but explodes at N=15+ (3.8s→15.5s)
+- **TPOT degrades severely**: 8.69ms (N=1) → 62.91ms (N=30), much worse than 1-GPU (9.82→11.30ms)
+- The 4-GPU setup processes all requests simultaneously (max_num_seqs=32), creating memory pressure and decode contention at high N
+
+### 1×GPU vs 4×GPU TP=4 Comparison
+
+| Scenario | 1×GPU P90 E2E | 4×GPU TP=4 P90 E2E | Winner |
+|----------|---------------|---------------------|--------|
+| Single request | 8.33s ❌ | **3.31s ✅** | **TP=4** (2.5× faster) |
+| Burst N=2 | 8.54s | **3.48s ✅** | **TP=4** |
+| Burst N=5 | 9.15s | **5.57s** | **TP=4** |
+| Burst N=10 | 11.70s | **5.11s** | **TP=4** (2.3× faster) |
+| Burst N=20 | 14.88s | 21.65s | **1×GPU** |
+| Burst N=30 | 18.07s | 31.28s | **1×GPU** |
+
+> **TP=4 wins dramatically for low concurrency** (single request through N=10) due to 5.2× faster prefill. But at high concurrency (N≥20), the 1-GPU configuration is actually better because its `max_num_seqs=8` queues excess requests rather than processing them all simultaneously, preventing TPOT degradation.
+
+---
+
 ## 3. TPU Benchmark Results (v6e-8 Trillium)
 
 ### vLLM Configuration
@@ -398,7 +482,9 @@ The customer's production config includes several flags that were **not used** i
 
 | Platform | Raw Log File | Status |
 |----------|-------------|--------|
-| GPU (RTX Pro 6000) | `data/gpu-benchmark-results.txt` | ✅ Available |
+| GPU 1× (RTX Pro 6000) | `data/gpu-benchmark-results.txt` | ✅ Available |
+| GPU 4× (TP=4) | `data/gpu-tp4-benchmark-results.txt` | ✅ Available |
+| GPU 4× (TP=4 JSON) | `data/gpu-tp4-p90-results.json` | ✅ Available |
 | TPU v6e-8 | `data/tpu-benchmark-results.txt` | ✅ Available |
 | Vertex AI MaaS | `data/maas-benchmark-results.txt` | ✅ Available |
 

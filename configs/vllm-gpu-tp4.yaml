@@ -1,0 +1,32 @@
+# vLLM GPU TP=4 Configuration — 4× NVIDIA RTX Pro 6000 (Blackwell)
+# Machine: g4-standard-192 (4 GPUs, 192 vCPUs, 768GB RAM)
+# Used for: gemma4-benchmark-report Section 2b
+
+model: google/gemma-4-26B-A4B-it
+host: 0.0.0.0
+port: 8000
+dtype: bfloat16
+quantization: fp8
+gpu-memory-utilization: 0.95
+max-model-len: 128000
+max-num-batched-tokens: 65536
+max-num-seqs: 32
+enable-chunked-prefill: true
+enable-prefix-caching: true
+tensor-parallel-size: 4
+trust-remote-code: true
+
+# Key differences from 1×GPU config:
+#   - tensor-parallel-size: 4 (vs 1)
+#   - max-num-seqs: 32 (vs 8)
+#   - trust-remote-code: true (required for TP>1)
+#
+# vLLM reports per GPU:
+#   - Model weights: ~6.4 GiB per GPU (25.67 GiB / 4)
+#   - KV cache: ~73 GiB per GPU
+#   - GPU utilization: ~83% per GPU
+#
+# Performance:
+#   - Single request E2E: 3.31s (P90) — meets 3.5s target ✅
+#   - TTFT: 1,108ms (5.2× faster than 1×GPU)
+#   - Peak throughput: 489.7 tok/s at burst N=10

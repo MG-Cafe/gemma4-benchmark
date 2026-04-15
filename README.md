@@ -1,6 +1,6 @@
 # Gemma 4 26B-A4B Inference Benchmark
 
-> **GPU vs TPU vs Vertex AI MaaS** — 3-way performance comparison for serving Gemma 4 26B-A4B-it (50 measured data points)
+> **GPU vs TPU vs Vertex AI MaaS** — 4-way performance comparison for serving Gemma 4 26B-A4B-it (68 measured data points)
 
 ![3-Way Comparison](plots/09_gpu_tpu_vertexai_comparison.png)
 
@@ -10,7 +10,8 @@ This repository benchmarks **Google's Gemma 4 26B-A4B-it** (26B params, MoE with
 
 | Platform | Hardware | Serving Stack | Data Points | Pricing |
 |----------|----------|---------------|-------------|---------|
-| **GPU** | NVIDIA RTX Pro 6000 (Blackwell), 96GB GDDR7 | vLLM 0.19.0 (FP8) | 17 | $4.50/hr on-demand |
+| **GPU (1×)** | NVIDIA RTX Pro 6000 (Blackwell), 96GB GDDR7 | vLLM 0.19.0 (FP8) | 17 | $4.50/hr on-demand |
+| **GPU (4× TP=4)** | 4× NVIDIA RTX Pro 6000, 384GB total | vLLM 0.19.0 (FP8, TP=4) | 18 | $18.00/hr on-demand |
 | **TPU** | Cloud TPU v6e-8 (Trillium), 8 chips, 256GB HBM | vLLM (BF16, TP=8) | 16 | $21.60/hr on-demand |
 | **Vertex AI MaaS** | Global endpoint (aiplatform.googleapis.com) | Model-as-a-Service | 17 | $0.15/M in, $0.60/M out |
 

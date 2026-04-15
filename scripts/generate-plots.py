@@ -3,7 +3,8 @@
 Generate benchmark plots for Gemma 4 26B-A4B inference comparison.
 
 All data points are real measurements:
-- RTX Pro 6000: 17 data points (9 QPS sweep + 8 burst sweep) via vllm bench serve
+- RTX Pro 6000 (1×GPU): 17 data points (9 QPS sweep + 8 burst sweep) via vllm bench serve
+- RTX Pro 6000 (4×GPU TP=4): 18 data points (9 QPS sweep + 1 baseline + 8 burst sweep)
 - TPU v6e-8: 16 data points (9 QPS sweep + 7 burst sweep) via vllm bench serve
 - Vertex AI MaaS: 17 data points (9 QPS sweep + 8 burst sweep) via aiplatform.googleapis.com
 
@@ -72,6 +73,52 @@ rtx_burst = [
     (15, 1.50, 374.2,  7268.4, 11.49, 15),
     (20, 1.78, 443.4,  8600.8, 11.13, 20),
     (30, 2.29, 572.6, 10368.5, 11.30, 30),
+]
+
+# =============================================================================
+# MEASURED DATA — GPU 4x RTX Pro 6000 (TP=4, FP8, prefix caching ON)
+# vLLM v0.19.0 on g4-standard-192 (4x GPUs)
+# =============================================================================
+
+# QPS sweep: 10 prompts per rate, fresh random prompts per QPS level
+tp4_qps = [
+    # (target_qps, achieved_qps, out_tok_s, ttft_ms, tpot_ms, peak_conc)
+    (0.10, 0.10,  24.23,   967.1,  9.90, 3),
+    (0.15, 0.14,  35.79,  1032.7, 10.64, 4),
+    (0.20, 0.19,  47.00,  1046.8, 11.79, 4),
+    (0.25, 0.24,  57.85,  1067.3, 12.65, 4),
+    (0.30, 0.28,  68.35,  1105.8, 13.66, 4),
+    (0.40, 0.37,  88.36,  1209.5, 14.87, 4),
+    (0.50, 0.45, 105.84,  1339.8, 17.69, 5),
+    (0.70, 0.60, 138.67,  1564.6, 20.68, 5),
+    (1.00, 0.78, 170.64,  2067.3, 25.14, 6),
+]
+
+# Single request baseline (10 cold runs, fresh prompts)
+tp4_baseline = {
+    'ttft_ms': 1108.3,
+    'tpot_ms': 8.83,
+    'output_tok_s': 76.67,
+    'e2e_s': 3.306,
+    'e2e_p90_s': 3.313,
+    'ttft_p90_ms': 1115.2,
+}
+
+# P90 E2E from gpu-tp4-p90-results.json (10 runs per data point)
+tp4_p90_qps = [3.791, 4.112, 4.541, 4.668, 5.035, 5.451, 6.444, 7.669, 8.787]
+tp4_p90_burst = [3.158, 3.480, 5.568, 5.684, 5.106, 16.647, 21.651, 31.277]
+
+# Burst sweep: all requests at once (--request-rate inf), fresh prompts
+tp4_burst = [
+    # (N, achieved_qps, out_tok_s, ttft_ms, tpot_ms, peak_conc)
+    ( 1, 0.37,  95.4,    535.7,  8.69,  1),
+    ( 2, 0.66, 169.7,    592.3,  9.73,  2),
+    ( 5, 1.05, 283.3,   1797.3, 11.91,  5),
+    ( 8, 1.42, 351.0,   1971.8, 14.75,  8),
+    (10, 1.99, 489.7,   1588.9, 13.84, 10),
+    (15, 1.51, 405.0,   3762.7, 24.89, 15),
+    (20, 0.93, 230.9,  10851.3, 43.23, 20),
+    (30, 0.96, 239.9,  15541.9, 62.91, 30),
 ]
 
 # =============================================================================
@@ -203,10 +250,12 @@ maas_burst = [
 # STYLING
 # =============================================================================
 RTX_COLOR = '#2ecc71'
+TP4_COLOR = '#e67e22'
 TPU_COLOR = '#3498db'
 VAI_COLOR = '#e74c3c'
 MAAS_COLOR = '#9b59b6'
-RTX_LABEL = 'RTX Pro 6000 (17 pts)'
+RTX_LABEL = 'GPU 1×RTX (17 pts)'
+TP4_LABEL = 'GPU 4×RTX TP=4 (18 pts)'
 TPU_LABEL = 'TPU v6e-8 (16 pts)'
 VAI_LABEL = 'Vertex AI Endpoint (17 pts)'
 MAAS_LABEL = 'Vertex AI MaaS (17 pts)'
@@ -233,6 +282,11 @@ def plot_01():
     for c, t in zip(tpu_conc, tpu_tpot_vals):
         ax.annotate(f'{t:.1f}ms', xy=(c, t), fontsize=8, fontweight='bold',
                     color=TPU_COLOR, xytext=(8, -12), textcoords='offset points')
+    # GPU 4×RTX TP=4 burst TPOT (8 points)
+    tp4_conc = [d[0] for d in tp4_burst]
+    tp4_tpot_vals = [d[4] for d in tp4_burst]
+    ax.plot(tp4_conc, tp4_tpot_vals, 'o-', color=TP4_COLOR, linewidth=2.5, markersize=10,
+            label=TP4_LABEL, zorder=5)
     ax.axhspan(0, 10, color='green', alpha=0.06)
     ax.axhspan(10, 14, color='yellow', alpha=0.06)
     ax.axhspan(14, 30, color='red', alpha=0.06)
@@ -240,12 +294,12 @@ def plot_01():
                label='RTX max_num_seqs=8')
     ax.set_xlabel('Concurrent Requests', fontsize=13)
     ax.set_ylabel('Mean TPOT (ms)', fontsize=13)
-    ax.set_title('Decode Latency vs Concurrency\nGPU vs TPU v6e-8 — TPOT degrades under load',
+    ax.set_title('Decode Latency vs Concurrency\nGPU (1×, 4×TP=4) vs TPU v6e-8',
                  fontsize=14, fontweight='bold')
-    ax.legend(fontsize=10, loc='upper left')
+    ax.legend(fontsize=9, loc='upper left')
     ax.grid(True, alpha=0.3)
-    ax.set_xlim(0, 22)
-    ax.set_ylim(6, 30)
+    ax.set_xlim(0, 32)
+    ax.set_ylim(6, 65)
     plt.tight_layout()
     plt.savefig('plots/01_tpot_vs_concurrency.png', dpi=150, bbox_inches='tight')
     plt.close()
@@ -272,15 +326,20 @@ def plot_02():
     for c, t in zip(tpu_conc, tpu_ttft_vals):
         ax.annotate(f'{t:.0f}ms', xy=(c, t), fontsize=8, fontweight='bold',
                     color=TPU_COLOR, xytext=(8, -12), textcoords='offset points')
+    # GPU 4×RTX TP=4 burst TTFT (8 points)
+    tp4_conc = [d[0] for d in tp4_burst]
+    tp4_ttft_vals = [d[3] for d in tp4_burst]
+    ax.plot(tp4_conc, tp4_ttft_vals, 'o-', color=TP4_COLOR, linewidth=2.5, markersize=10,
+            label=TP4_LABEL, zorder=5)
     ax.axvline(x=8, color='orange', linestyle='--', linewidth=1.5, alpha=0.7,
                label='RTX max_num_seqs=8')
     ax.set_xlabel('Concurrent Requests', fontsize=13)
     ax.set_ylabel('Mean TTFT (ms)', fontsize=13)
-    ax.set_title('Prefill Latency vs Concurrency\nTPU v6e-8 handles burst 2.8x faster than GPU at N=20',
+    ax.set_title('Prefill Latency vs Concurrency\nGPU (1×, 4×TP=4) vs TPU v6e-8',
                  fontsize=14, fontweight='bold')
-    ax.legend(fontsize=10)
+    ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
-    ax.set_xlim(0, 22)
+    ax.set_xlim(0, 32)
     plt.tight_layout()
     plt.savefig('plots/02_ttft_vs_concurrency.png', dpi=150, bbox_inches='tight')
     plt.close()
@@ -304,11 +363,16 @@ def plot_03():
     tpu_e2e = [calc_e2e(d[1], d[4]) / 1000 for d in tpu_burst]
     ax.plot(tpu_conc, tpu_e2e, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=10,
             label=TPU_LABEL, zorder=4)
+    # GPU 4×RTX TP=4 burst E2E
+    tp4_conc = [d[0] for d in tp4_burst]
+    tp4_e2e = [calc_e2e(d[3], d[4]) / 1000 for d in tp4_burst]
+    ax.plot(tp4_conc, tp4_e2e, 'o-', color=TP4_COLOR, linewidth=2.5, markersize=10,
+            label=TP4_LABEL, zorder=5)
     ax.axhline(y=3.5, color='red', linestyle=':', linewidth=2.5, label='Target: 3.5s E2E')
     ax.axhspan(0, 3.5, color='green', alpha=0.04)
     ax.set_xlabel('Concurrent Requests', fontsize=13)
     ax.set_ylabel('Mean E2E Latency (seconds)', fontsize=13)
-    ax.set_title('End-to-End Latency vs Concurrency\n20K input tokens -> 250 output tokens',
+    ax.set_title('End-to-End Latency vs Concurrency\nGPU (1×, 4×TP=4) vs TPU — 20K input, 250 output',
                  fontsize=14, fontweight='bold')
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3)
@@ -334,6 +398,11 @@ def plot_04():
     tpu_thr_est = [tpu_baseline['output_tok_s']] + [d[0] * 250 / (calc_e2e(d[1], d[4]) / 1000) for d in tpu_burst[1:]]
     ax.plot(tpu_conc, tpu_thr_est, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=10,
             label=TPU_LABEL, zorder=4)
+    # GPU 4×RTX TP=4 throughput
+    tp4_conc = [d[0] for d in tp4_burst]
+    tp4_thr = [d[2] for d in tp4_burst]
+    ax.plot(tp4_conc, tp4_thr, 'o-', color=TP4_COLOR, linewidth=2.5, markersize=10,
+            label=TP4_LABEL, zorder=5)
     ax.axvline(x=8, color='orange', linestyle='--', linewidth=1.5, alpha=0.7,
                label='RTX max_num_seqs=8')
     ax.set_xlabel('Concurrent Requests', fontsize=13)
@@ -369,11 +438,19 @@ def plot_05():
     ax1.set_xlabel('Request Rate (QPS)', fontsize=12)
     ax1.set_ylabel('Latency (ms)', fontsize=12)
     ax1.set_title('TTFT & TPOT vs QPS', fontsize=13, fontweight='bold')
-    ax1.legend(fontsize=8)
+    # GPU 4×RTX TP=4 QPS sweep
+    tp4_qps_rates = [d[0] for d in tp4_qps]
+    tp4_ttft_vals = [d[3] for d in tp4_qps]
+    tp4_tpot_vals = [d[4] for d in tp4_qps]
+    ax1.plot(tp4_qps_rates, tp4_ttft_vals, 'o-', color=TP4_COLOR, linewidth=2.5, markersize=9, label='TP=4 TTFT', zorder=5)
+    ax1.plot(tp4_qps_rates, tp4_tpot_vals, 'o--', color=TP4_COLOR, linewidth=2, markersize=8, label='TP=4 TPOT', alpha=0.7, zorder=5)
+    ax1.legend(fontsize=7)
     ax1.grid(True, alpha=0.3)
-    ax2.plot(qps, e2e, 's-', color=RTX_COLOR, linewidth=2.5, markersize=9, label='RTX', zorder=3)
+    ax2.plot(qps, e2e, 's-', color=RTX_COLOR, linewidth=2.5, markersize=9, label='GPU 1×', zorder=3)
     tpu_e2e_qps = [calc_e2e(d[1], d[4]) / 1000 for d in tpu_qps]
     ax2.plot(tpu_qps_rates, tpu_e2e_qps, 'D-', color=TPU_COLOR, linewidth=2.5, markersize=9, label='TPU', zorder=4)
+    tp4_e2e_qps = [calc_e2e(d[3], d[4]) / 1000 for d in tp4_qps]
+    ax2.plot(tp4_qps_rates, tp4_e2e_qps, 'o-', color=TP4_COLOR, linewidth=2.5, markersize=9, label='GPU 4× TP=4', zorder=5)
     ax2.axhline(y=3.5, color='red', linestyle=':', linewidth=2, label='Target: 3.5s')
     ax2.set_xlabel('Achieved Request Rate (QPS)', fontsize=12)
     ax2.set_ylabel('E2E Latency (seconds)', fontsize=12)
@@ -676,9 +753,10 @@ def plot_14():
 
 # =============================================================================
 if __name__ == '__main__':
-    total = len(rtx_qps)+len(rtx_burst)+len(tpu_qps)+len(tpu_burst)+len(maas_qps)+len(maas_burst)
+    total = len(rtx_qps)+len(rtx_burst)+len(tp4_qps)+len(tp4_burst)+len(tpu_qps)+len(tpu_burst)+len(maas_qps)+len(maas_burst)
     print(f"\nGenerating 10 benchmark plots...")
-    print(f"  RTX: {len(rtx_qps)} QPS + {len(rtx_burst)} burst = {len(rtx_qps)+len(rtx_burst)} data points")
+    print(f"  RTX 1×GPU: {len(rtx_qps)} QPS + {len(rtx_burst)} burst = {len(rtx_qps)+len(rtx_burst)} data points")
+    print(f"  RTX 4×GPU TP=4: {len(tp4_qps)} QPS + {len(tp4_burst)} burst = {len(tp4_qps)+len(tp4_burst)} data points")
     print(f"  TPU: {len(tpu_qps)} QPS + {len(tpu_burst)} burst = {len(tpu_qps)+len(tpu_burst)} data points")
     print(f"  Vertex AI MaaS: {len(maas_qps)} QPS + {len(maas_burst)} burst = {len(maas_qps)+len(maas_burst)} data points")
     print(f"  Total: {total} data points")
