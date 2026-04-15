@@ -557,14 +557,14 @@ def plot_09():
         'grid.color': '#333', 'grid.alpha': 0.4,
     })
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-    fig.suptitle('Gemma 4 26B-A4B -- 3-Way Comparison\n(~20k input, 250 output tokens)',
+    fig.suptitle('Gemma 4 26B-A4B -- 4-Way Comparison\n(~20k input, 250 output tokens)',
                  fontsize=18, fontweight='bold', color='white', y=0.98)
-    labels = ['GPU\n(RTX 6000)', 'TPU v6e-8', 'Vertex AI\n(MaaS)']
-    colors = ['#00ff88', '#ff6b6b', '#bb86fc']
+    labels = ['GPU 1×\n(RTX 6000)', 'GPU 4×\n(TP=4)', 'TPU\nv6e-8', 'MaaS']
+    colors = ['#00ff88', '#ff9500', '#ff6b6b', '#bb86fc']
 
     # Panel 1: Single TTFT (from baseline dicts and burst[0] data)
     ax = axes[0,0]
-    vals = [rtx_baseline['ttft_ms'], tpu_baseline['ttft_ms'], maas_burst[0][1]]
+    vals = [rtx_baseline['ttft_ms'], tp4_baseline['ttft_ms'], tpu_baseline['ttft_ms'], maas_burst[0][1]]
     bars = ax.bar(labels, vals, color=colors, alpha=0.85, edgecolor='white', linewidth=0.5, width=0.6)
     for b, v in zip(bars, vals):
         ax.text(b.get_x()+b.get_width()/2, b.get_height()+50, f'{v:,}ms', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
@@ -574,7 +574,7 @@ def plot_09():
 
     # Panel 2: Single E2E — P90 (customer SLA metric, all chips)
     ax = axes[0,1]
-    vals = [rtx_baseline['e2e_p90_s'], tpu_baseline['e2e_p90_s'], maas_baseline['e2e_p90_s']]
+    vals = [rtx_baseline['e2e_p90_s'], tp4_baseline['e2e_p90_s'], tpu_baseline['e2e_p90_s'], maas_baseline['e2e_p90_s']]
     bars = ax.bar(labels, vals, color=colors, alpha=0.85, edgecolor='white', linewidth=0.5, width=0.6)
     for b, v in zip(bars, vals):
         ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.05, f'{v:.2f}s', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
@@ -586,7 +586,7 @@ def plot_09():
 
     # Panel 3: Burst 20 E2E — P90 for all chips
     ax = axes[1,0]
-    vals = [rtx_p90_burst[6], tpu_p90_burst[6], maas_burst[6][7]]
+    vals = [rtx_p90_burst[6], tp4_p90_burst[6], tpu_p90_burst[6], maas_burst[6][7]]
     bars = ax.bar(labels, vals, color=colors, alpha=0.85, edgecolor='white', linewidth=0.5, width=0.6)
     for b, v in zip(bars, vals):
         ax.text(b.get_x()+b.get_width()/2, b.get_height()+0.15, f'{v:.1f}s', ha='center', va='bottom', fontweight='bold', color='white', fontsize=12)
@@ -600,7 +600,10 @@ def plot_09():
     ax = axes[1,1]
     rtx_burst_n = [d[0] for d in rtx_burst]
     rtx_bp90_valid = [(n, p) for n, p in zip(rtx_burst_n, rtx_p90_burst) if p > 0]
-    ax.plot([x[0] for x in rtx_bp90_valid], [x[1] for x in rtx_bp90_valid], 's-', color='#00ff88', linewidth=2, markersize=8, label='GPU P90 E2E')
+    ax.plot([x[0] for x in rtx_bp90_valid], [x[1] for x in rtx_bp90_valid], 's-', color='#00ff88', linewidth=2, markersize=8, label='GPU 1× P90 E2E')
+    # GPU 4× TP=4 P90 burst sweep
+    tp4_burst_n = [d[0] for d in tp4_burst]
+    ax.plot(tp4_burst_n, tp4_p90_burst, 'o-', color='#ff9500', linewidth=2, markersize=8, label='GPU 4× TP=4 P90 E2E', zorder=3)
     tpu_bn = [d[0] for d in tpu_burst]
     tpu_bp90_valid = [(n, p) for n, p in zip(tpu_bn, tpu_p90_burst) if p > 0]
     ax.plot([x[0] for x in tpu_bp90_valid], [x[1] for x in tpu_bp90_valid], 'D-', color='#ff6b6b', linewidth=2, markersize=8, label='TPU P90 E2E', zorder=4)
